@@ -162,12 +162,10 @@ export function SceneImageList({ projectId, scenes }: SceneImageListProps) {
         throw new Error("Failed to confirm all images");
       }
 
-      setLocalScenes((prev) =>
-        prev.map((s) => ({ ...s, image_confirmed: true }))
-      );
+      // Refresh the page to show the next stage (videos)
+      window.location.reload();
     } catch (error) {
       console.error("Failed to confirm all images:", error);
-    } finally {
       setIsConfirmingAll(false);
     }
   };

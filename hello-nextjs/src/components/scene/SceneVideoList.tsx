@@ -201,12 +201,10 @@ export function SceneVideoList({ projectId, scenes }: SceneVideoListProps) {
         throw new Error("Failed to confirm all videos");
       }
 
-      setLocalScenes((prev) =>
-        prev.map((s) => ({ ...s, video_confirmed: true }))
-      );
+      // Refresh the page to show the completed stage
+      window.location.reload();
     } catch (error) {
       console.error("Failed to confirm all videos:", error);
-    } finally {
       setIsConfirmingAll(false);
     }
   };
