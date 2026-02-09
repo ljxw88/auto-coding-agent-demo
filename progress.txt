@@ -1,5 +1,39 @@
 # Progress Log
 
+## 2026-02-10 - Task 15: 生成 API - 分镜描述生成
+
+### What was done:
+- 创建 app/api/generate/scenes/route.ts 分镜生成 API
+  - POST /api/generate/scenes 生成分镜描述
+  - 获取项目故事和风格
+  - 调用智谱AI GLM 拆解故事
+  - 解析返回的 JSON 分镜列表
+  - 删除旧分镜（如果存在）
+  - 保存新分镜到数据库
+  - 更新项目 stage 为 'scenes'
+  - 返回分镜列表
+- 创建 app/api/generate/scenes/regenerate/route.ts 重新生成 API
+  - POST /api/generate/scenes/regenerate 重新生成分镜
+  - 获取已有分镜作为参考
+  - 支持用户反馈用于改进
+  - 流程与生成相同
+
+### Testing:
+- 运行 npm run lint 通过
+- 运行 npm run build 构建成功
+- API 端点已注册：
+  - ƒ /api/generate/scenes
+  - ƒ /api/generate/scenes/regenerate
+
+### Notes:
+- AI 服务未配置时返回 503 错误
+- 项目无故事内容返回 400 错误
+- 项目不存在返回 404 错误
+- AI 调用失败返回 502 错误
+- 需要配置 ZHIPU_API_KEY 才能进行真实 API 测试
+
+---
+
 ## 2026-02-10 - Task 14: 项目 API - CRUD
 
 ### What was done:

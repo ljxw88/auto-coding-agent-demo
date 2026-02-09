@@ -209,7 +209,7 @@
         "创建 app/api/generate/scenes/regenerate/route.ts",
         "POST 重新生成分镜（流程同上）"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 16,
