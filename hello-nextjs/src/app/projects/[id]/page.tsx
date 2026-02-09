@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { StageIndicator } from "@/components/project/StageIndicator";
+import { DraftStageView } from "@/components/scene/DraftStageView";
 import { SceneDescriptionList } from "@/components/scene/SceneDescriptionList";
 import { SceneImageList } from "@/components/scene/SceneImageList";
 import { SceneVideoList } from "@/components/scene/SceneVideoList";
@@ -153,27 +154,7 @@ export default async function ProjectDetailPage({
             </h2>
 
             {project.stage === "draft" && (
-              <div className="py-8 text-center">
-                <p className="mb-4 text-zinc-600 dark:text-zinc-400">
-                  准备好了吗？点击下方按钮开始生成分镜描述
-                </p>
-                <button className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-6 py-3 text-sm font-medium text-zinc-50 transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                  生成分镜
-                </button>
-              </div>
+              <DraftStageView projectId={project.id} />
             )}
 
             {project.stage === "scenes" && (
