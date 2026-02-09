@@ -1,5 +1,46 @@
 # Progress Log
 
+## 2026-02-10 - Task 8 & 9: AI API 封装
+
+### What was done:
+**Task 8 - 智谱AI API 封装:**
+- 创建 types/ai.ts - AI 相关类型定义
+  - Zhipu AI chat completions 请求/响应类型
+  - Story to scenes 转换类型
+  - 火山引擎图片/视频生成类型
+  - 风格选项类型
+- 创建 lib/ai/zhipu.ts - 智谱AI GLM 模型封装
+  - chatCompletion() - 基础 chat completions 调用
+  - storyToScenes() - 故事转分镜描述
+  - regenerateScenes() - 重新生成分镜（支持反馈）
+  - 故事转分镜 prompt 模板（中文）
+  - 错误处理和重试逻辑（最多3次）
+  - 请求超时处理（60秒）
+
+**Task 9 - 火山引擎图片生成 API 封装:**
+- 创建 lib/ai/volc-image.ts - 火山引擎 Seedream 图片生成
+  - generateImage() - 生成图片（返回 base64）
+  - generateImageBuffer() - 生成图片（返回 Buffer）
+  - regenerateImage() - 重新生成图片
+  - HMAC-SHA256 签名认证
+  - 风格 prompt 自动拼接
+  - 错误处理和重试逻辑（最多3次）
+  - 请求超时处理（120秒）
+
+### Testing:
+- 运行 npm run lint 通过
+- 运行 npm run build 构建成功
+- TypeScript 类型检查通过
+
+### Notes:
+- 智谱AI 需要 ZHIPU_API_KEY 环境变量
+- 火山引擎需要 VOLC_ACCESS_KEY 和 VOLC_SECRET_KEY 环境变量
+- 暂未进行真实 API 调用测试（需要配置 API 密钥）
+- 火山引擎使用 HMAC-SHA256 签名认证方式
+- 支持的风格：realistic, anime, cartoon, cinematic, watercolor, oil_painting, sketch, cyberpunk, fantasy, scifi
+
+---
+
 ## 2026-02-10 - Task 6 & 7: 用户认证 - 登出功能 + 认证保护中间件
 
 ### What was done:
