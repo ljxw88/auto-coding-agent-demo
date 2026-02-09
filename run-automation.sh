@@ -133,6 +133,7 @@ Please follow the workflow in CLAUDE.md:
 5. Commit all changes including task.json update in a single commit
 
 Start by reading task.json to find your task.
+Please complete only one task in this session, and stop once you are done or if you encounter an unresolvable issue.
 PROMPT_EOF
 
     # Run Claude with the prompt from stdin

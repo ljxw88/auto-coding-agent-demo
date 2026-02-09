@@ -65,7 +65,6 @@ After implementation, verify ALL steps in the task:
 - [ ] lint 通过
 - [ ] build 成功
 - [ ] 功能在浏览器中正常工作（对于 UI 相关修改）
-- [ ] 错误情况正确处理
 
 ### Step 5: Update Progress
 
