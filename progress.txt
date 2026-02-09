@@ -1,0 +1,39 @@
+# Progress Log
+
+## 2026-02-09 - Task: Project infrastructure setup
+
+### What was done:
+- Created CLAUDE.md with agent workflow instructions
+- Created task.json with initial task list (based on Anthropic's feature_list.json structure)
+- Created init.sh for environment initialization
+- Created progress.txt for tracking
+- Created Next.js hello-world project in hello-nextjs/
+
+### Testing:
+- Verified all infrastructure files exist
+- Built Next.js project successfully
+- Started dev server and loaded page in browser
+- Verified page renders correctly with no errors
+
+### Notes:
+- task.json structure follows Anthropic's recommended format
+- Task 1, 2, 3 marked as passes: true (infrastructure, server, home page all working)
+- Remaining tasks are placeholders awaiting detailed requirements
+- init.sh installs deps and starts dev server for each new agent session
+
+---
+
+## Template for New Entries
+
+```
+## [Date] - Task: [task description from task.json]
+
+### What was done:
+- [specific changes made]
+
+### Testing:
+- [how it was tested, what was verified]
+
+### Notes:
+- [any relevant notes, decisions, or gotchas for future agents]
+```
