@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SceneImageCard } from "./SceneImageCard";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
 import type { Scene, Image as ImageType } from "@/types/database";
@@ -20,6 +20,17 @@ export function SceneImageList({ projectId, scenes }: SceneImageListProps) {
   const [localScenes, setLocalScenes] = useState(scenes);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [isConfirmingAll, setIsConfirmingAll] = useState(false);
+
+  // Resume polling for any images that are still processing when component mounts
+  useEffect(() => {
+    localScenes.forEach((scene) => {
+      if (scene.image_status === "processing") {
+        // Resume polling for this image
+        pollForImageCompletion(scene.id);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Collect all storage paths for images
   const storagePaths = useMemo(() => {

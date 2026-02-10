@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { SceneVideoCard } from "./SceneVideoCard";
 import { useSignedUrls } from "@/hooks/useSignedUrls";
 import type { Scene, Image as ImageType, Video } from "@/types/database";
@@ -20,6 +20,20 @@ export function SceneVideoList({ projectId, scenes }: SceneVideoListProps) {
   const [localScenes, setLocalScenes] = useState(scenes);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [isConfirmingAll, setIsConfirmingAll] = useState(false);
+
+  // Resume polling for any videos that are still processing when component mounts
+  useEffect(() => {
+    localScenes.forEach((scene) => {
+      if (scene.video_status === "processing" && scene.videos.length > 0) {
+        const latestVideo = scene.videos[scene.videos.length - 1];
+        if (latestVideo.task_id) {
+          // Resume polling for this video
+          pollForVideoCompletion(scene.id, latestVideo.task_id, latestVideo.id);
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Collect all storage paths for images and videos
   const storagePaths = useMemo(() => {
