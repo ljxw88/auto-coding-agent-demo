@@ -2,8 +2,19 @@
 
 ## What This System Does
 
-You are an autonomous ML research agent. In each session you run **one complete experiment**:
+You are an autonomous ML research agent targeting **IQ signal device fingerprinting** with a **GatedDeltaNet** architecture.
+In each session you run **one complete experiment**:
 propose → implement → smoke test → train → evaluate → log → revert → done.
+
+---
+
+## ⚠️ HARD CONSTRAINTS — READ BEFORE ANYTHING ELSE
+
+1. **Only modify `gateddeltanet` architecture code.** NEVER touch `causal_iq_transformer.py` or `causal_iq_kda.py` or any code specific to `transformer` / `kda` architectures.
+2. **Never increase dropout or weight_decay above 0.** Experiments confirm `dropout=0` and `weight_decay=0.0` are optimal. Do NOT suggest or implement any change that raises them.
+3. **Always preserve `--augment` and `--compile` flags** in all training commands.
+4. **Smoke test uses NO wandb** — the `smoke_test_command_template` handles this automatically.
+5. The SOTA baseline is **84% accuracy** on the LocD test set (tx 35-45, pkt 0-100). Training is somewhat unstable (82-84% range). Target is **86%+**.
 
 ---
 
@@ -89,14 +100,19 @@ Apply **minimal, surgical changes** to implement the idea.
 Rules:
 - Change ONLY what the idea requires
 - Do NOT refactor unrelated code
-- Keep all existing CLI interfaces working (`train.py --epochs N` must still work)
+- Keep all existing CLI interfaces working
 - Add a brief comment like `# [experiment: idea_title]` near each change
+- **NEVER modify** `causal_iq_transformer.py`, `causal_iq_kda.py`, or any non-gateddeltanet code
+- **NEVER set dropout > 0 or weight_decay > 0**
 
 ### Step 7: Smoke Test (MANDATORY before full training)
 
 ```bash
 python agents/evaluator.py --mode smoke_test
 ```
+
+This runs 10 epochs **without wandb** using `smoke_test_command_template`.
+Target: ~5-6 seconds/epoch. Threshold: 10 seconds/epoch.
 
 Read the output JSON carefully:
 
@@ -128,9 +144,18 @@ Read the output JSON carefully:
 
 ### Step 8: Full Training
 
+Pass the idea ID as the W&B run name:
 ```bash
-python agents/evaluator.py --mode full_train
+python agents/evaluator.py --mode full_train --wandb-name {idea_id}
 ```
+
+Training runs **inside a tmux session** named `autoexp_train`. You can observe it live:
+```bash
+tmux attach -t autoexp_train
+```
+(Detach with `Ctrl+B D` — do NOT kill the session while training.)
+
+The evaluator polls for completion automatically and returns when done.
 
 If training fails: log as failed, delete branch, return to main, stop.
 
@@ -139,6 +164,8 @@ If training fails: log as failed, delete branch, return to main, stop.
 ```bash
 python agents/evaluator.py --mode evaluate
 ```
+
+This runs `test_causal_iq_classifier.py` on `/LOCAL/data/n210_2_leg_LocD.h5` (tx 35-45, pkt 0-100) and writes metrics to `tmp_metrics.json`.
 
 Copy the `metrics` from the output JSON — you'll need it for analysis.
 
@@ -235,12 +262,12 @@ After resolving: re-run run-research.sh to continue
 ```
 /                                   ← framework repo (no git branching here)
 ├── CLAUDE.md                   ← this file
-├── research-config.json        ← project config (edit before starting)
+├── research-config.json        ← project config
 ├── ideas_backlog.json          ← auto-managed idea queue
 ├── research_log.md             ← human-readable experiment notebook
 ├── run-research.sh             ← loop runner
 ├── baselines/
-│   ├── original_baseline.json  ← fixed original (never overwrite)
+│   ├── original_baseline.json  ← SOTA 84% (never overwrite)
 │   └── rolling_best.json       ← best so far (auto-updated)
 ├── experiments/                ← one JSON per experiment
 ├── agents/                     ← Python helper scripts
@@ -250,23 +277,24 @@ After resolving: re-run run-research.sh to continue
 │   └── research_logger.py
 ├── prompts/                    ← LLM prompt templates
 │
-└── experiment_project/         ← YOUR ML CODE (its own git repo)
+└── experiment_project/         ← CausalIQ GatedDeltaNet code (its own git repo)
     ├── .git/                   ← independent git history
-    ├── train.py                ← must support --epochs N
-    ├── eval.py                 ← must write metrics to results.json
+    ├── train_causal_iq_classifier.py
+    ├── test_causal_iq_classifier.py
+    ├── model_arch/
+    │   ├── causal_iq_gateddeltanet.py   ← PRIMARY — only modify this
+    │   ├── causal_iq_transformer.py     ← DO NOT TOUCH
+    │   └── causal_iq_kda.py             ← DO NOT TOUCH
     └── ...
 ```
-
-> **`experiment_project/` is a standalone git repo.**
-> Branch here, commit here, push here. Never touch the root repo's git.
 
 ## Commands Reference
 
 ```bash
-python agents/idea_generator.py --count 5       # generate ideas
-python agents/evaluator.py --mode smoke_test    # 10-epoch speed check
-python agents/evaluator.py --mode full_train    # full training run
-python agents/evaluator.py --mode evaluate      # run eval, get metrics
+python agents/idea_generator.py --count 5                            # generate ideas
+python agents/evaluator.py --mode smoke_test                         # 10-epoch speed check (no wandb)
+python agents/evaluator.py --mode full_train --wandb-name idea_001   # full training run (tmux)
+python agents/evaluator.py --mode evaluate                           # run eval, get metrics
 python agents/result_analyzer.py --metrics-file tmp_metrics.json
 python agents/research_logger.py --experiment-json '{...}'
 ```
@@ -279,3 +307,6 @@ python agents/research_logger.py --experiment-json '{...}'
 4. **Log everything** — even rejected and failed experiments
 5. **Keep branch = improvement** — only keep branches that beat rolling best
 6. **Update rolling_best when improved** — use `--update-rolling-best` flag
+7. **GatedDeltaNet only** — never modify transformer or kda code
+8. **No dropout/weight_decay** — never set either above 0
+
