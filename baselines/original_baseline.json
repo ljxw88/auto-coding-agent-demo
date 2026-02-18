@@ -1,12 +1,14 @@
 {
   "_comment": "Set this once before starting experiments. Never overwrite this file.",
-  "recorded_at": null,
+  "recorded_at": "2026-02-18T12:29:00Z",
   "metrics": {
     "primary": {
       "name": "accuracy",
-      "value": null
+      "value": 0.4828
     },
-    "supporting": {}
+    "supporting": {
+      "loss": 1.4056
+    }
   },
-  "notes": "Original baseline before any modifications"
+  "notes": "SmallCNN on CIFAR-10 (10K subset), 5 epochs warm-up, Adam lr=0.001, no batch norm, no lr schedule"
 }

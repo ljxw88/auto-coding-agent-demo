@@ -1,13 +1,15 @@
 {
   "_comment": "Updated whenever an experiment beats the current best. Starts as a copy of original_baseline.json.",
-  "recorded_at": null,
-  "source_experiment": null,
+  "recorded_at": "2026-02-18T12:29:00Z",
+  "source_experiment": "original_baseline",
   "metrics": {
     "primary": {
       "name": "accuracy",
-      "value": null
+      "value": 0.4828
     },
-    "supporting": {}
+    "supporting": {
+      "loss": 1.4056
+    }
   },
   "notes": "Rolling best — updated automatically"
 }

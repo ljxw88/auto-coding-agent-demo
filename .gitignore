@@ -22,3 +22,11 @@ build/
 # Environment
 .env.local
 .env.*.local
+
+# Research project artifacts
+example-research/data/
+example-research/checkpoints/
+example-research/results.json
+tmp_metrics.json
+__pycache__/
+*.pyc

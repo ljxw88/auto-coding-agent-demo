@@ -1,18 +1,18 @@
 {
-  "project_name": "MyResearchProject",
-  "research_goal": "Describe what you want to optimize (e.g. improve model accuracy on task X)",
-  "research_domain": "deep learning",
+  "project_name": "CIFAR-10 SmallCNN",
+  "research_goal": "Improve test accuracy of the SmallCNN baseline on CIFAR-10 (10K training subset)",
+  "research_domain": "image classification deep learning",
   "arxiv_search_queries": [
-    "training efficiency neural network",
-    "optimization techniques deep learning"
+    "CNN training tricks CIFAR-10 accuracy improvement",
+    "batch normalization regularization small dataset"
   ],
 
   "primary_metric": "accuracy",
   "metric_direction": "higher_is_better",
 
-  "train_command_template": "cd research-project && python train.py --epochs {epochs}",
-  "eval_command": "cd research-project && python eval.py --output ../tmp_metrics.json",
-  "metrics_output_file": "tmp_metrics.json",
+  "train_command_template": "cd example-research && conda run -n llm python train.py --epochs {epochs}",
+  "eval_command": "cd example-research && conda run -n llm python eval.py --output results.json",
+  "metrics_output_file": "example-research/results.json",
 
   "smoke_test_epochs": 10,
   "full_train_epochs": 500,
