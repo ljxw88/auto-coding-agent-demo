@@ -10,9 +10,9 @@
   "primary_metric": "accuracy",
   "metric_direction": "higher_is_better",
 
-  "train_command_template": "cd example-research && conda run -n llm python train.py --epochs {epochs}",
-  "eval_command": "cd example-research && conda run -n llm python eval.py --output results.json",
-  "metrics_output_file": "example-research/results.json",
+  "train_command_template": "cd experiment_project && conda run -n llm python train.py --epochs {epochs}",
+  "eval_command": "cd experiment_project && conda run -n llm python eval.py --output results.json",
+  "metrics_output_file": "experiment_project/results.json",
 
   "smoke_test_epochs": 10,
   "full_train_epochs": 500,

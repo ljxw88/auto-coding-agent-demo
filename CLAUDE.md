@@ -7,6 +7,23 @@ propose → implement → smoke test → train → evaluate → log → revert �
 
 ---
 
+## ⚠️ Two-Repo Architecture — READ THIS FIRST
+
+This framework uses **two separate git repositories**:
+
+| Repo | Path | Purpose |
+|------|------|---------|
+| **Framework repo** (this repo) | `/` (root) | Stores config, ideas, logs, baselines, agent scripts. **Never run git here.** |
+| **Experiment repo** | `experiment_project/` | Your actual ML code. **All git operations happen here.** |
+
+The `experiment_project/` directory is its own independent git repo.
+You will **branch, commit, push, and merge exclusively inside `experiment_project/`**.
+
+**NEVER run `git` commands from the root `/` directory.**
+All git commands must be run as: `cd experiment_project && git ...`
+
+---
+
 ## MANDATORY Workflow (follow every step, in order)
 
 ### Step 1: Load Context
@@ -32,7 +49,7 @@ If `baselines/original_baseline.json` has `"value": null`, you must run the base
 python agents/evaluator.py --mode evaluate
 ```
 Then manually update `baselines/original_baseline.json` AND `baselines/rolling_best.json` with the results.
-Commit: `git add . && git commit -m "Set original baseline"`
+Commit baseline info in the framework repo is not needed — just update the JSON files.
 
 ### Step 3: Refresh Ideas (if backlog has fewer than 3 pending ideas)
 
@@ -55,7 +72,10 @@ Note the idea's `id`, `title`, `hypothesis`, `implementation_notes`, and `files_
 
 ### Step 5: Create Experiment Branch
 
+All git operations happen **inside `experiment_project/`** — never in the root repo.
+
 ```bash
+cd experiment_project
 git checkout -b experiment/{idea_id}-$(date +%Y%m%d_%H%M%S)
 ```
 
@@ -96,6 +116,7 @@ Read the output JSON carefully:
   ```
 - Delete the branch and return to main:
   ```bash
+  cd experiment_project
   git checkout main
   git branch -D BRANCH_NAME
   ```
@@ -155,20 +176,22 @@ python agents/research_logger.py \
   [--update-rolling-best if outcome == "improved"]
 ```
 
-### Step 12: Git Cleanup
+### Step 12: Git Cleanup (inside `experiment_project/`)
+
+Remember: all git commands run from within `experiment_project/`.
 
 **If `outcome == "improved"`** (better than rolling best):
 ```bash
-# Keep the branch — it contains the improvement
+cd experiment_project
 git add . && git commit -m "[experiment] IDEA_TITLE - improved (+DELTA on METRIC)"
-# Optionally tag it
 git tag keeper/IDEA_ID
-# Return to main (keep the branch alive)
+# Return to main (keep the branch alive for reference)
 git checkout main
 ```
 
 **If NOT improved**:
 ```bash
+cd experiment_project
 git checkout main
 git branch -D BRANCH_NAME
 ```
@@ -210,7 +233,7 @@ After resolving: re-run run-research.sh to continue
 ## Project Structure
 
 ```
-/
+/                                   ← framework repo (no git branching here)
 ├── CLAUDE.md                   ← this file
 ├── research-config.json        ← project config (edit before starting)
 ├── ideas_backlog.json          ← auto-managed idea queue
@@ -226,8 +249,16 @@ After resolving: re-run run-research.sh to continue
 │   ├── result_analyzer.py
 │   └── research_logger.py
 ├── prompts/                    ← LLM prompt templates
-└── [your-research-project/]    ← attach your ML project here
+│
+└── experiment_project/         ← YOUR ML CODE (its own git repo)
+    ├── .git/                   ← independent git history
+    ├── train.py                ← must support --epochs N
+    ├── eval.py                 ← must write metrics to results.json
+    └── ...
 ```
+
+> **`experiment_project/` is a standalone git repo.**
+> Branch here, commit here, push here. Never touch the root repo's git.
 
 ## Commands Reference
 
@@ -244,7 +275,7 @@ python agents/research_logger.py --experiment-json '{...}'
 
 1. **One experiment per session** — complete the loop, then stop
 2. **Always smoke test first** — never run full training without it
-3. **Never modify main** — always work on an experiment branch
+3. **Git lives in `experiment_project/`** — NEVER run git from the root repo
 4. **Log everything** — even rejected and failed experiments
 5. **Keep branch = improvement** — only keep branches that beat rolling best
 6. **Update rolling_best when improved** — use `--update-rolling-best` flag
