@@ -1,0 +1,12 @@
+{
+  "_comment": "Set this once before starting experiments. Never overwrite this file.",
+  "recorded_at": null,
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": null
+    },
+    "supporting": {}
+  },
+  "notes": "Original baseline before any modifications"
+}

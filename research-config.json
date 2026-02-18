@@ -1,0 +1,30 @@
+{
+  "project_name": "MyResearchProject",
+  "research_goal": "Describe what you want to optimize (e.g. improve model accuracy on task X)",
+  "research_domain": "deep learning",
+  "arxiv_search_queries": [
+    "training efficiency neural network",
+    "optimization techniques deep learning"
+  ],
+
+  "primary_metric": "accuracy",
+  "metric_direction": "higher_is_better",
+
+  "train_command_template": "cd research-project && python train.py --epochs {epochs}",
+  "eval_command": "cd research-project && python eval.py --output ../tmp_metrics.json",
+  "metrics_output_file": "tmp_metrics.json",
+
+  "smoke_test_epochs": 10,
+  "full_train_epochs": 500,
+  "max_seconds_per_epoch": 10,
+
+  "max_experiments": 50,
+  "max_consecutive_failures": 5,
+  "target_metric_value": null,
+
+  "idea_generation": {
+    "use_arxiv": true,
+    "ideas_per_batch": 5,
+    "llm_model": "claude-opus-4-5"
+  }
+}
