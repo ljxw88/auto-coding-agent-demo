@@ -1,0 +1,26 @@
+The background task was the full training run that already completed — I already captured its result (status: ok, 600 epochs, 5.35s/epoch). The session is fully complete.
+
+---
+
+## Session Complete — exp_028 Summary
+
+**Experiment:** G2 — Focal Loss Gamma=3.0
+
+| Item | Value |
+|------|-------|
+| Idea | Focal Loss with gamma=3.0 (vs baseline gamma=2.0) |
+| Smoke test | 6.66s/epoch — OK |
+| LocD test accuracy | **83.1%** |
+| vs rolling best (85%) | **-1.9pp (regression)** |
+| Branch | Deleted |
+
+**Key finding:** gamma=2.0 is the confirmed optimum for this 10-class task. Increasing to gamma=3.0 over-concentrates gradients on a tiny fraction of hard device pairs, destabilizing training.
+
+**Also completed this session:**
+- Fixed `idea_generator.py` (replaced `str.format()` with manual `str.replace()` to avoid KeyError when arxiv content contains `{}`/`}`)
+- Marked F4/F5 as done (confirmed NO-OPs — methods don't exist in `gpu_aug_iq.py`)
+- Added 5 new ideas to backlog: G1 (auxiliary head), G3 (STFT embedding), G4 (focal γ=1.5), G5 (dim=768), B6 (Mamba-2)
+
+**Stop condition:** 10 consecutive regressions/failures exceeds `max_consecutive_failures=5`.
+
+**Next session priority ideas:** G4 (focal γ=1.5), G3 (STFT patch embedding), G1 (auxiliary classification head).

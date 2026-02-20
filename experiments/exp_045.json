@@ -1,0 +1,35 @@
+{
+  "idea_id": "J2",
+  "idea_title": "Conv Bias in GDN Short Causal Conv (conv_bias=True)",
+  "git_branch": "experiment/J2-20260219_215221",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 9.19,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.839
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.839,
+    "delta": -0.001,
+    "delta_pct": -0.119,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.839,
+    "delta": -0.012,
+    "delta_pct": -1.41,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Enabling learnable bias in GDN short causal convolution resulted in 83.9% accuracy (-1.2pp regression vs rolling best 85.1%). The conv_bias=True introduces additional learnable parameters that appear to interfere with the zero-bias GDN delta-rule state propagation dynamics. The non-bias convolution baseline is confirmed optimal for this architecture.",
+  "id": "exp_045"
+}

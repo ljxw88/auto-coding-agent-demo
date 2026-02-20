@@ -1,0 +1,35 @@
+{
+  "idea_id": "C5",
+  "idea_title": "Random Temporal Crop / Burst Offset",
+  "git_branch": "experiment/C5-20260218_195422",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 7.09,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.687
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.687,
+    "delta": -0.153,
+    "delta_pct": -18.214,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.687,
+    "delta": -0.153,
+    "delta_pct": -18.214,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Random temporal crop with zero-padding regressed sharply to 68.7% (-15.3pp). The zero-padding creates a hard boundary artifact at the end of the cropped signal that may confuse the model, and shorter effective sequences reduce the available discriminative content. The crop is also applied per-batch rather than per-sample, reducing augmentation diversity. A per-sample crop or circular shift without padding would avoid these issues.",
+  "id": "exp_012"
+}

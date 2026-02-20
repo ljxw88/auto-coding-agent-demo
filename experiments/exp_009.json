@@ -1,0 +1,35 @@
+{
+  "idea_id": "A3",
+  "idea_title": "Differential IQ Channels",
+  "git_branch": "experiment/A3-20260218_185406",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.52,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.806
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.806,
+    "delta": -0.034,
+    "delta_pct": -4.048,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.806,
+    "delta": -0.034,
+    "delta_pct": -4.048,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Differential IQ channels (appending dI/dQ first-order differences) regressed to 80.6% (-3.4pp). While the hypothesis that differences emphasize transient features is theoretically sound, the added channels double the patch embedding input size and may dilute the discriminative I/Q signal content by introducing noisy gradient information from the random augmentation pipeline (Jakes fading, CFO, IQ imbalance). The differences of phase-randomized signals may carry little device fingerprint information.",
+  "id": "exp_009"
+}

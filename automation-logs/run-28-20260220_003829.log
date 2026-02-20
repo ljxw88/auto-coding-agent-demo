@@ -1,0 +1,1 @@
+That background task was the full training run from the previous session — already completed and fully processed. The result (83.7% accuracy, regression) was already evaluated, logged as exp_050, and the branch was cleaned up.

@@ -1,0 +1,37 @@
+{
+  "idea_id": "G5",
+  "idea_title": "Larger Model dim=768",
+  "git_branch": "experiment/G5-20260219_114122",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 9.15,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 91.49
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.818
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.818,
+    "delta": -0.022,
+    "delta_pct": -2.619,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.818,
+    "delta": -0.032,
+    "delta_pct": -3.765,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Increasing model width from dim=512 to dim=768 hurt accuracy by -3.2pp (81.8% vs 85%). The hypothesis that more capacity would help discriminate hard device pairs was not confirmed. This suggests the GDN with depth=4 and dim=512 is already well-sized for this 10-class fingerprinting task; wider models may overfit or the added parameters do not capture new discriminative features given the fixed focal loss training signal.",
+  "id": "exp_032"
+}

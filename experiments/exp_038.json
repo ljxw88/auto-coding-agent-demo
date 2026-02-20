@@ -1,0 +1,36 @@
+{
+  "idea_id": "H5",
+  "idea_title": "MLP Hidden Ratio Tuning (mlp_ratio=2.0)",
+  "git_branch": "experiment/H5-20260219_162700",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 7.21,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.818
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.818,
+    "delta": -0.022,
+    "delta_pct": -2.619,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.818,
+    "delta": -0.033,
+    "delta_pct": -3.878,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Reducing mlp_ratio from 4.0 to 2.0 significantly hurts accuracy to 81.8% (-3.3pp vs rolling best 85.1%). The hypothesis that the MLP path is over-parameterized is not supported \u2014 halving the feedforward capacity under-provisions the representational transformation needed in each GDN block. The MLP ratio=4.0 is confirmed optimal alongside the focal loss and head_dim=128 configuration.",
+  "id": "exp_038"
+}

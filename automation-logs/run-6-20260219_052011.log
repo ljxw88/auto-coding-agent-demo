@@ -1,0 +1,26 @@
+The background task notification is just confirming what already completed — the full training result was already captured (5.4s/epoch, status ok). No action needed.
+
+The session is complete. Here's the full summary:
+
+---
+
+## Session Complete — exp_025: D5 Attention Pooling
+
+**Idea**: D5 — Change `--pooling last` → `--pooling attn`
+
+| Step | Result |
+|------|--------|
+| Smoke test | OK — 6.56s/epoch (threshold: 10s) |
+| Full training | OK — 600 epochs, 5.4s/epoch avg |
+| LocD test accuracy | **81.1%** |
+| vs rolling best (85.0%) | **-3.9pp — REGRESSION** |
+| Branch | Deleted |
+
+**Conclusion**: Attention pooling over all tokens hurts the causal GDN model. The last-token recurrent state already aggregates the full sequence through the delta-rule memory mechanism, making learned weighted aggregation redundant and harmful. `--pooling last` remains optimal.
+
+**Stop condition triggered**: 7 consecutive failures (exp_019–exp_025) exceeds `max_consecutive_failures=5`.
+
+**Next session priorities**:
+1. Fix `idea_generator.py` (KeyError in prompt template) and generate new ideas
+2. Remaining viable backlog ideas: **E3** (Learned Positional Embeddings), **F1** (Circular Temporal Roll), **B6** (Mamba-2 Backbone)
+3. Rolling best remains **85.0%** — target is 86%+

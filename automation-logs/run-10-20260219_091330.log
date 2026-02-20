@@ -1,0 +1,23 @@
+The background task was the full training run that already completed — I already processed its results. The session is complete.
+
+---
+
+## Session Summary — exp_029 Complete
+
+**Experiment:** G1 — Auxiliary Intermediate Classification Head
+
+| | |
+|---|---|
+| **Result** | REGRESSION |
+| **Accuracy** | 82.9% (-2.1pp vs rolling best 85.0%) |
+| **Branch** | Deleted (not kept) |
+| **Smoke test** | 6.89s/epoch ✓ |
+
+**What happened:**
+- Added a shallow classification head at the GDN midpoint (after block 2 of 4), creating a second gradient path with aux_weight=0.3
+- Hypothesis: intermediate supervision would regularize representations and improve final accuracy (as in GoogLeNet)
+- Reality: with only depth=4, the intermediate state at block 2 is too early in the recurrent computation — the GDN hasn't integrated enough temporal context for a meaningful auxiliary signal. The conflicting gradients degraded the final representation quality.
+
+**Stop condition:** 11 consecutive failures (exp_019–exp_029) exceeds `max_consecutive_failures=5`.
+
+**Remaining backlog:** G3 (STFT embedding), G4 (focal gamma=1.5), G5 (dim=768) — to be run in subsequent sessions.

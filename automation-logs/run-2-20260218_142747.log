@@ -1,0 +1,5 @@
+Both background tasks have already been retrieved and processed during the session. The experiment is fully complete — no further action needed on those outputs.
+
+The session ended with:
+- **exp_002 (A4)** logged: 83.5% accuracy, regression, branch deleted
+- All state restored: `research-config.json` back to `--arch gateddeltanet`, experiment branch deleted, `ideas_backlog.json` updated with A4 as `done`

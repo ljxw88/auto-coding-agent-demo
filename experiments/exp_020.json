@@ -1,0 +1,35 @@
+{
+  "idea_id": "F2",
+  "idea_title": "Gain/Power Jitter Augmentation",
+  "git_branch": "experiment/F2-20260219_025716",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.5,
+    "epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.834
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.834,
+    "delta": -0.006,
+    "delta_pct": -0.714,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.834,
+    "delta": -0.016,
+    "delta_pct": -1.882,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Gain/Power Jitter (LogNormal gain after AWGN) did not improve accuracy, regressing -1.6pp from the 85% focal loss baseline to 83.4%. The augmentation may be over-regularizing the model \u2014 the LocD test data has consistent capture conditions so AGC variation is not a significant real-world covariate. This augmentation adds unhelpful domain shift that distracts from the device-specific fingerprint patterns.",
+  "id": "exp_020"
+}

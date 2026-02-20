@@ -1,0 +1,15 @@
+{
+  "idea_id": "B6",
+  "idea_title": "Mamba-2 Backbone",
+  "git_branch": "experiment/B6-20260219_125635",
+  "outcome": "failed",
+  "smoke_test": {
+    "status": "failed",
+    "message": "CUDA OOM during backward: Mamba2 torch fallback allocates 6D intermediate tensors (batch x n_chunks x chunk_size x chunk_size x n_groups x state_size) which require ~20+ GB for training with batch_size=128. Estimated epoch time ~18.6s >> 10s threshold even if OOM fixed.",
+    "avg_seconds_per_epoch_estimated": 18.6,
+    "threshold": 10
+  },
+  "branch_kept": false,
+  "conclusion": "Mamba-2 backbone is infeasible without triton/CUDA kernel installation. The torch fallback path allocates enormous 6D intermediate tensors during forward/backward that cause OOM with batch_size=128. Even with reduced state_size=16, estimated epoch time is ~18.6s (> 10s threshold). The selective SSM inductive bias could be promising but requires mamba-ssm package installation with CUDA kernels.",
+  "id": "exp_033"
+}

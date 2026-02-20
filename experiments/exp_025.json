@@ -1,0 +1,35 @@
+{
+  "idea_id": "D5",
+  "idea_title": "Attention Pooling",
+  "git_branch": "experiment/D5-20260219_052113",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.56,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.811
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.811,
+    "delta": -0.029,
+    "delta_pct": -3.452,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.811,
+    "delta": -0.039,
+    "delta_pct": -4.588,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Attention pooling caused a -3.9pp regression vs rolling best (85.0%\u219281.1%). The hypothesis that attn pooling recovers discriminative early-burst tokens was not confirmed. With causal GDN, the last-token recurrent state already summarizes the full sequence context via the delta-rule memory matrix, making learned attention weights over all tokens redundant and potentially harmful. The --pooling last strategy remains optimal.",
+  "id": "exp_025"
+}

@@ -10,8 +10,8 @@
   "primary_metric": "accuracy",
   "metric_direction": "higher_is_better",
 
-  "smoke_test_command_template": "cd experiment_project && python train_causal_iq_classifier.py --manifest ./shards/manifest.json --arch gateddeltanet --batch_size 128 --epochs {epochs} --lr 3e-4 --dim 512 --depth 4 --heads 8 --pooling last --patch_size 64 --weight_decay 0.0 --save_path ./saved_models/smoke_test.pth --patch_embed_type causal_conv --augment --compile",
-  "full_train_command_template": "cd experiment_project && python train_causal_iq_classifier.py --manifest ./shards/manifest.json --arch gateddeltanet --batch_size 128 --epochs {epochs} --lr 3e-4 --dim 512 --depth 4 --heads 8 --pooling last --patch_size 64 --weight_decay 0.0 --save_path ./saved_models/current_experiment.pth --patch_embed_type causal_conv --augment --compile --wandb --wandb_project causal_iq_cls_patchemb --wandb_name {wandb_name}",
+  "smoke_test_command_template": "cd experiment_project && python train_causal_iq_classifier.py --manifest ./shards/manifest.json --arch gateddeltanet --batch_size 128 --epochs {epochs} --lr 3e-4 --dim 512 --depth 4 --heads 4 --head_dim 128 --pooling last --patch_size 64 --weight_decay 0.0 --save_path ./saved_models/smoke_test.pth --patch_embed_type causal_conv --augment --compile --label_smoothing 0.05 --focal_loss",
+  "full_train_command_template": "cd experiment_project && python train_causal_iq_classifier.py --manifest ./shards/manifest.json --arch gateddeltanet --batch_size 128 --epochs {epochs} --lr 3e-4 --dim 512 --depth 4 --heads 4 --head_dim 128 --pooling last --patch_size 64 --weight_decay 0.0 --save_path ./saved_models/current_experiment.pth --patch_embed_type causal_conv --augment --compile --label_smoothing 0.05 --focal_loss --wandb --wandb_project causal_iq_cls_patchemb --wandb_name {wandb_name}",
   "eval_command": "cd experiment_project && python test_causal_iq_classifier.py --tx_start 35 --tx_end 45 --pkt_start 0 --pkt_end 100 --device auto --normalize --data_path /LOCAL/data/n210_2_leg_LocD.h5 --model_path ./saved_models/current_experiment.pth --output ../tmp_metrics.json",
   "metrics_output_file": "tmp_metrics.json",
 

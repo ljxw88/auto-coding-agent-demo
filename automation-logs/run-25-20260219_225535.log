@@ -1,0 +1,27 @@
+The background task already completed and we've processed all the results. The session is done.
+
+Here's the final summary of what was accomplished:
+
+---
+
+**Experiment exp_048 — J4: Batch Size 64**
+
+| Step | Result |
+|------|--------|
+| Idea selected | J4 (batch_size=64), config-only change |
+| Branch | `experiment/J4-20260219_225626` |
+| Smoke test | ✅ OK — 5.5s/epoch (threshold: 10s) |
+| Full training | ✅ Complete — 511 epochs, early stopping |
+| LocD test accuracy | **82.0%** |
+| vs Rolling best (85.1%) | **−3.1pp REGRESSION** |
+| Branch | Deleted |
+
+**Conclusion**: Batch size 64 destabilizes focal loss training. Focal loss needs stable per-batch loss estimates to correctly identify hard vs easy examples — smaller batches introduce too much variance. `batch_size=128` confirmed optimal.
+
+---
+
+**Session state:**
+- Experiments: 48 logged (2 slots remain before max=50)
+- Consecutive non-improvements: 4 (J1, J2, J3, J4) — stop condition is 5
+- Pending ideas: **J5 only** (LR warmup)
+- Rolling best: **85.1%** unchanged

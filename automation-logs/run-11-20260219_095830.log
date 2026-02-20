@@ -1,0 +1,3 @@
+The full training result was already retrieved and processed during the experiment — it completed successfully with **5.35s/epoch average** over 600 epochs (exit code 0), which allowed the experiment to proceed to evaluation.
+
+The session is fully complete. All results have been logged and memory updated.

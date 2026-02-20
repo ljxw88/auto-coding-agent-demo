@@ -1,0 +1,35 @@
+{
+  "idea_id": "C4",
+  "idea_title": "Curriculum Learning (SNR Schedule)",
+  "git_branch": "experiment/C4-20260218_180957",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.46,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.779
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.779,
+    "delta": -0.061,
+    "delta_pct": -7.262,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.779,
+    "delta": -0.061,
+    "delta_pct": -7.262,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Curriculum learning with high SNR floor (25 dB) for first 200 epochs did not help; accuracy dropped to 77.9% (-6.1pp). Training on easier (less noisy) examples early may have caused the model to overfit to clean signal patterns and then struggle when the SNR floor drops, rather than building better fingerprint features. The augmentor already includes CFO and IQ imbalance on top of AWGN, so the phase-randomizing effects dominate regardless of SNR floor.",
+  "id": "exp_008"
+}

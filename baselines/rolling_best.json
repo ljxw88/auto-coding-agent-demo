@@ -1,13 +1,13 @@
 {
   "_comment": "Updated whenever an experiment beats the current best. Starts as a copy of original_baseline.json.",
-  "recorded_at": "2026-02-18T13:00:00Z",
-  "source_experiment": "original_baseline",
+  "recorded_at": "2026-02-19T16:24:13.918686Z",
+  "source_experiment": "exp_037",
   "metrics": {
     "primary": {
       "name": "accuracy",
-      "value": 0.84
+      "value": 0.851
     },
     "supporting": {}
   },
-  "notes": "Rolling best — updated automatically. GatedDeltaNet SOTA 84% on LocD."
+  "notes": "Set by experiment exp_037: Larger Head Dimension (head_dim=128, num_heads=4)"
 }

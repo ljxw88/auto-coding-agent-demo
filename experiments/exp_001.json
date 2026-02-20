@@ -1,0 +1,36 @@
+{
+  "idea_id": "C1",
+  "idea_title": "IQ Imbalance Augmentation",
+  "git_branch": "experiment/C1-20260218_135516",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.52,
+    "threshold": 10,
+    "total_elapsed": 65.25
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.809
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.809,
+    "delta": -0.031,
+    "delta_pct": -3.69,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.809,
+    "delta": -0.031,
+    "delta_pct": -3.69,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "The IQ imbalance augmentation hypothesis was not confirmed \u2014 accuracy dropped from 84% to 80.9% (-3.1pp). The augmentation likely introduced too much receiver-side variability relative to what the test setup actually exhibits, since train and test data come from the same receiver. Artificially varying IQ imbalance may disrupt receiver-correlated features that currently aid classification rather than improve transmitter-specific fingerprinting.",
+  "id": "exp_001"
+}

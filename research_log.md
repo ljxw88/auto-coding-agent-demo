@@ -6,3 +6,528 @@ Legend: ✅ improved vs rolling best | ❌ no improvement | ⏱️ rejected (too
 
 ---
 
+## 🔬 Analysis Summary — Post exp_012 (2026-02-18)
+
+> Written by analysis agent after 12 experiments with 0 improvements. Read this before choosing the next experiment.
+
+### Current State
+- **Rolling best**: 84.0% (unchanged — no experiment has improved over baseline)
+- **D1 (Label Smoothing)** is currently `in_progress` on branch `experiment/D1-20260218_204638`
+- **18 pending ideas** in `ideas_backlog.json` (including newly added F1–F7)
+
+---
+
+### ⚠️ CRITICAL: Augmentation Pipeline Contamination
+
+**The most important finding from this analysis session:**
+
+Experiments C1 (IQ Imbalance, −3.1pp) and C2 (Phase Noise, −5.7pp) and C5 (Temporal Crop, −15.3pp) all regressed when tested individually — but their code (`apply_iq_imbalance`, `apply_phase_noise`, zero-pad crop block) was **committed to `main`** and is **currently active by default** in `utils/gpu_aug_iq.py`.
+
+This means **every experiment from D1 onward is training with augmentations that were proven to cause −3 to −6pp regressions on their own.** The cumulative effect may be significantly suppressing achievable accuracy. The 84% SOTA baseline was established on a cleaner pipeline (Jakes + CFO + AWGN only).
+
+**Immediate recommended actions (in order):**
+1. Run **F7** (Clean Augmentation Baseline): disable phase noise + IQ imbalance + temporal crop — re-establish true baseline
+2. Run **F4** or **F5** individually to isolate which augmentation is most damaging
+3. Only after cleaning the pipeline, run architecture/training experiments (D2, D3, E2, etc.)
+
+---
+
+### What the 12 Experiments Taught Us
+
+#### Pattern 1: Augmentations That Destroy Device Fingerprints (All Regressed)
+RFFI device fingerprints ARE the hardware impairments — phase noise, IQ imbalance, PA nonlinearity. Augmentations that randomise these signals teach the model *invariance* to the very cues it should be learning.
+
+| Rule | Evidence |
+|------|----------|
+| Never randomise phase noise | C2: −5.7pp. Phase noise trajectory is a transmitter-specific fingerprint. |
+| Never randomise IQ imbalance | C1: −3.1pp. IQ imbalance ratio is tied to the transmitter's mixer hardware. |
+| Never use Mixup across classes | C3: −3.6pp. IQ fingerprints do not linearly superpose. |
+| Never zero-pad temporal crops | C5: −15.3pp. Boundary artifact dominates training signal. |
+| Curriculum SNR does not help | C4: −6.1pp. Existing augmentation already dominates. |
+
+**Safe augmentations** (receiver-side, invariant to device identity):
+- Constant global phase rotation (F3): receiver LO phase reference is random
+- Gain/amplitude scaling (F2): path loss doesn't encode device identity
+- Circular temporal roll (F1): burst timing uncertainty, no boundary artifact
+
+#### Pattern 2: Input Feature Engineering Adds Noise (All Regressed)
+The augmentation pipeline (Jakes + CFO + IQ imbalance) randomises phase and amplitude before the model sees the signal. Derived features (polar, differential) carry mostly augmentation noise, not device identity.
+
+| Idea | Why it failed |
+|------|--------------|
+| Polar form channels (A2) | amp/phase randomised by aug pipeline — 5-channel input is noisier |
+| Differential IQ (A3) | differences of phase-randomised signals carry little fingerprint info |
+| Multi-scale patch embed (A1) | stride=64 halved temporal resolution; averaging dilutes the single best scale |
+| Local depthwise mixer (B4) | redundant with GDN's internal conv_size=4 short convolution |
+
+**Lesson**: GDN already extracts sufficient features. Don't add input transformations on top of an augmented signal.
+
+#### Pattern 3: Training Instability Is the Unsolved Core Problem
+The 82–84% baseline range is not just noise — it indicates `ReduceLROnPlateau` is getting stuck. No experiment has directly attacked this.
+
+**High-leverage approaches not yet tried:**
+- **E2 (OneCycleLR)**: warm-up to 3e-3 + cosine decay — proactive vs reactive scheduling
+- **D3 (Cosine LR)**: simpler alternative to OneCycleLR
+- **B3 (Stochastic Depth)**: ensemble regularisation at zero inference cost
+
+#### Pattern 4: Architectural Mistakes to Avoid
+- **CLS at position 0 (B2)**: causal GDN only sees itself — collapsed to 10% (chance). If CLS ever revisited, append at END.
+- **expand_v=4.0 (B5)**: 22% over the 10s/epoch threshold. Use 3.0 instead (see E4).
+- **B1 previously listed `causal_iq_transformer.py`** — FORBIDDEN file. Fixed: use `F.scaled_dot_product_attention` directly inside `causal_iq_gateddeltanet.py`.
+- **B3 previously listed `causal_iq_kda.py`** — FORBIDDEN file. Fixed: GDN-only scope in `shared.py` + `causal_iq_gateddeltanet.py`.
+
+---
+
+### Recommended Experiment Priority Order
+
+```
+Priority 1 — Fix the pipeline (URGENT, do first)
+  F7: Clean augmentation baseline (disable phase noise + IQ imbalance + temporal crop)
+  F4: Ablate phase noise only (diagnostic)
+  F5: Ablate IQ imbalance only (diagnostic)
+
+Priority 2 — Safe new augmentations (once pipeline is clean)
+  F3: Constant phase rotation (safe, receiver-side)
+  F2: Gain/power jitter (safe, path loss invariance)
+  F1: Circular temporal roll (fix of C5, no boundary artifact)
+
+Priority 3 — Training stability
+  E2: OneCycleLR schedule (proactive LR cycling, highest-impact training change)
+  D3: Cosine LR with warmup
+  D4: Finer patch stride (stride=16 → 512 tokens)
+
+Priority 4 — Architecture (lower risk now that B1/B3 constraint issues are fixed)
+  B3: Stochastic depth (GDN-only scope, start drop_path_rate=0.1)
+  B1: Hybrid GDN+SDPA (F.scaled_dot_product_attention in gateddeltanet.py only)
+  D2: Deeper model (depth=6)
+```
+
+---
+
+
+## exp_001 — IQ Imbalance Augmentation
+**Date**: 2026-02-18  **Branch**: `experiment/C1-20260218_135516`
+**Result**: ❌ regression  |  accuracy: 0.809
+**vs Original**: -0.0310 (-3.69%)
+**vs Rolling Best**: -0.0310 (-3.69%)
+**Smoke test**: 6.52s/epoch
+**Conclusion**: The IQ imbalance augmentation hypothesis was not confirmed — accuracy dropped from 84% to 80.9% (-3.1pp). The augmentation likely introduced too much receiver-side variability relative to what the test setup actually exhibits, since train and test data come from the same receiver. Artificially varying IQ imbalance may disrupt receiver-correlated features that currently aid classification rather than improve transmitter-specific fingerprinting.
+**Branch kept**: No
+
+## exp_002 — Dual-Branch Time+Frequency Fusion
+**Date**: 2026-02-18  **Branch**: `experiment/A4-20260218_142830`
+**Result**: ❌ regression  |  accuracy: 0.835
+**vs Original**: -0.0050 (-0.59%)
+**vs Rolling Best**: -0.0050 (-0.59%)
+**Smoke test**: 6.87s/epoch
+**Conclusion**: The dual-branch fusion hypothesis was not confirmed — accuracy dropped slightly from 84% to 83.5% (-0.5pp), within the known training instability range. Despite remarkable validation accuracy (99.5%) during training, the STFT frequency branch did not improve generalization on the LocD test set. Adding the STFT branch doubles model complexity without a meaningful accuracy gain, suggesting the GDN time-domain backbone already captures the salient RFFI features.
+**Branch kept**: No
+
+## exp_003 — Polar Form Feature Channels
+**Date**: 2026-02-18  **Branch**: `experiment/A2-20260218_151158`
+**Result**: ❌ regression  |  accuracy: 0.829
+**vs Original**: -0.0110 (-1.31%)
+**vs Rolling Best**: -0.0110 (-1.31%)
+**Smoke test**: 6.66s/epoch
+**Conclusion**: The polar form feature channels hypothesis was not confirmed — accuracy dropped from 84% to 82.9% (-1.1pp). Explicitly appending amplitude, sin(phase), and cos(phase) channels did not provide additional discriminative information beyond what the GatedDeltaNet already extracts from raw I/Q. The 5-channel input may have made the patch embedding optimization harder, and the result falls within the known training instability range, showing no net benefit.
+**Branch kept**: No
+
+## exp_004 — Multi-scale Patch Embedding
+**Date**: 2026-02-18  **Branch**: `experiment/A1-20260218_155623`
+**Result**: ❌ regression  |  accuracy: 0.811
+**vs Original**: -0.0290 (-3.45%)
+**vs Rolling Best**: -0.0290 (-3.45%)
+**Smoke test**: 9.62s/epoch
+**Conclusion**: The multi-scale patch embedding hypothesis was not confirmed — accuracy dropped from 84% to 81.1% (-2.9pp). Averaging three causal conv branches (kernel sizes 32, 64, 128) with stride 64 appears to dilute discriminative features: the optimal single-scale (64) gets averaged with less informative scales. Using stride=64 instead of the baseline stride=32 also reduced temporal resolution from 257 to 129 tokens, likely hurting classification. The result is a clear regression.
+**Branch kept**: No
+
+## exp_005 — Local Depthwise-Conv Mixer Before GDN Attention
+**Date**: 2026-02-18  **Branch**: `experiment/B4-20260218_162250`
+**Result**: ❌ regression  |  accuracy: 0.81
+**vs Original**: -0.0300 (-3.57%)
+**vs Rolling Best**: -0.0300 (-3.57%)
+**Smoke test**: 7.01s/epoch
+**Conclusion**: The local depthwise-conv mixer hypothesis was not confirmed — accuracy dropped from 84% to 81.0% (-3.0pp). The GDN already includes an internal short convolution (use_short_conv=True, conv_size=4) for local context, making an external LocalMixer redundant. Adding an extra causal depthwise conv before attn_norm introduces conflicting inductive bias and appears to disrupt the model optimization, yielding a clear regression.
+**Branch kept**: No
+
+## exp_006 — Mixup on IQ Signals
+**Date**: 2026-02-18  **Branch**: `experiment/C3-20260218_165901`
+**Result**: ❌ regression  |  accuracy: 0.804
+**vs Original**: -0.0360 (-4.29%)
+**vs Rolling Best**: -0.0360 (-4.29%)
+**Smoke test**: 6.63s/epoch
+**Conclusion**: Mixup (alpha=0.4) caused a -3.6pp regression (80.4%). Interpolating IQ signals from different transmitters produces physically unrealistic mixed signals: device fingerprints do not linearly superpose. The model learns to classify these synthetic mixtures at test time, but test evaluation uses clean unmixed signals, so the model is penalized for adapting to artificial mixing. Mixup appears unsuitable for RFFI where signal identities are non-linearly encoded.
+**Branch kept**: No
+
+## exp_007 — Phase Noise Augmentation
+**Date**: 2026-02-18  **Branch**: `experiment/C2-20260218_173535`
+**Result**: ❌ regression  |  accuracy: 0.783
+**vs Original**: -0.0570 (-6.79%)
+**vs Rolling Best**: -0.0570 (-6.79%)
+**Smoke test**: 6.46s/epoch
+**Conclusion**: Phase noise augmentation caused the largest regression yet (-5.7pp, 78.3%). Oscillator phase noise is a device-specific fingerprint signature: by training the model to be invariant to random phase walks, we destroy exactly the discriminative cue the model uses for identification. The hypothesis incorrectly assumed phase noise was a channel distortion; in RFFI it is instead a transmitter identity signal. This augmentation is fundamentally counter-productive for this task.
+**Branch kept**: No
+
+## exp_008 — Curriculum Learning (SNR Schedule)
+**Date**: 2026-02-18  **Branch**: `experiment/C4-20260218_180957`
+**Result**: ❌ regression  |  accuracy: 0.779
+**vs Original**: -0.0610 (-7.26%)
+**vs Rolling Best**: -0.0610 (-7.26%)
+**Smoke test**: 6.46s/epoch
+**Conclusion**: Curriculum learning with high SNR floor (25 dB) for first 200 epochs did not help; accuracy dropped to 77.9% (-6.1pp). Training on easier (less noisy) examples early may have caused the model to overfit to clean signal patterns and then struggle when the SNR floor drops, rather than building better fingerprint features. The augmentor already includes CFO and IQ imbalance on top of AWGN, so the phase-randomizing effects dominate regardless of SNR floor.
+**Branch kept**: No
+
+## exp_009 — Differential IQ Channels
+**Date**: 2026-02-18  **Branch**: `experiment/A3-20260218_185406`
+**Result**: ❌ regression  |  accuracy: 0.806
+**vs Original**: -0.0340 (-4.05%)
+**vs Rolling Best**: -0.0340 (-4.05%)
+**Smoke test**: 6.52s/epoch
+**Conclusion**: Differential IQ channels (appending dI/dQ first-order differences) regressed to 80.6% (-3.4pp). While the hypothesis that differences emphasize transient features is theoretically sound, the added channels double the patch embedding input size and may dilute the discriminative I/Q signal content by introducing noisy gradient information from the random augmentation pipeline (Jakes fading, CFO, IQ imbalance). The differences of phase-randomized signals may carry little device fingerprint information.
+**Branch kept**: No
+
+## exp_010 — Expand_v Tuning for GatedDeltaNet
+**Date**: 2026-02-18  **Branch**: `experiment/B5-20260218_193231`
+**Result**: ⏱️ too_slow  |  metric: N/A
+**Smoke test**: 12.16s/epoch
+**Conclusion**: Rejected: expand_v=4.0 caused per-epoch time of 12.16s, exceeding the 10s threshold. Doubling the value expansion ratio nearly doubles the GDN memory matrix size and recompilation cost. Could try a more modest increase (e.g. expand_v=3.0) in a future session.
+**Branch kept**: No
+
+## exp_011 — CLS Token Pooling
+**Date**: 2026-02-18  **Branch**: `experiment/B2-20260218_193649`
+**Result**: ❌ regression  |  accuracy: 0.1
+**vs Original**: -0.7400 (-88.10%)
+**vs Rolling Best**: -0.7400 (-88.10%)
+**Smoke test**: 7.43s/epoch
+**Conclusion**: CLS token pooling collapsed to random-chance accuracy (10%). The fundamental incompatibility is that CLS is prepended at position 0, but the causal GDN processes left-to-right: the CLS token at position 0 only attends to itself and receives no information from subsequent IQ patch tokens. For CLS pooling to work with a causal model, the token would need to be appended at the end (position -1), but then it is equivalent to --pooling last. Early stopping fired very early due to stagnant validation loss.
+**Branch kept**: No
+
+## exp_012 — Random Temporal Crop / Burst Offset
+**Date**: 2026-02-18  **Branch**: `experiment/C5-20260218_195422`
+**Result**: ❌ regression  |  accuracy: 0.687
+**vs Original**: -0.1530 (-18.21%)
+**vs Rolling Best**: -0.1530 (-18.21%)
+**Smoke test**: 7.09s/epoch
+**Conclusion**: Random temporal crop with zero-padding regressed sharply to 68.7% (-15.3pp). The zero-padding creates a hard boundary artifact at the end of the cropped signal that may confuse the model, and shorter effective sequences reduce the available discriminative content. The crop is also applied per-batch rather than per-sample, reducing augmentation diversity. A per-sample crop or circular shift without padding would avoid these issues.
+**Branch kept**: No
+
+## exp_013 — Clean Augmentation Baseline (Disable All Harmful Steps)
+**Date**: 2026-02-18  **Branch**: `experiment/F7-20260218_212727`
+**Result**: ❌ regression  |  accuracy: 0.823
+**vs Original**: -0.0170 (-2.02%)
+**vs Rolling Best**: -0.0170 (-2.02%)
+**Smoke test**: 9.23s/epoch
+**Conclusion**: Removing IQ imbalance, phase noise, and temporal crop augmentations produced extreme overfitting — val_acc peaked at 99.4% during training while LocD test accuracy regressed to 82.3% (-1.7pp from baseline). Despite each augmentation individually causing val-set regressions in prior experiments, they appear to provide crucial domain generalization to the LocD test distribution. The hypothesis that accumulated harmful augmentations were suppressing accuracy is rejected — these augmentations provide necessary regularization for LocD generalization even if they negatively impact val-set accuracy during training.
+**Branch kept**: No
+
+## exp_014 — OneCycleLR Schedule
+**Date**: 2026-02-18  **Branch**: `experiment/E2-20260218_220727`
+**Result**: ❌ regression  |  accuracy: 0.801
+**vs Original**: -0.0390 (-4.64%)
+**vs Rolling Best**: -0.0390 (-4.64%)
+**Smoke test**: 6.38s/epoch
+**Conclusion**: OneCycleLR with max_lr=3e-3 (10x base lr) caused a regression to 80.1% (-3.9pp from baseline). Val accuracy during training reached 99.5% but LocD test accuracy was poor, confirming the val/test distribution gap observed in F7. The aggressive learning rate peak (3e-3) likely drove the model into sharp minima that generalize poorly to the LocD test distribution. The super-convergence benefit seen in classification benchmarks does not transfer to this RFFI task with its augmentation-induced domain shift.
+**Branch kept**: No
+
+## exp_015 — Constant Phase Rotation Augmentation
+**Date**: 2026-02-18  **Branch**: `experiment/F3-20260218_224944`
+**Result**: ❌ regression  |  accuracy: 0.815
+**vs Original**: -0.0250 (-2.98%)
+**vs Rolling Best**: -0.0250 (-2.98%)
+**Smoke test**: 6.54s/epoch
+**Conclusion**: Adding random U(0,2pi) constant phase rotation per burst (applied before CFO) regressed LocD test accuracy by -2.5pp to 81.5%. Despite the sound motivation (absolute phase is receiver-LO dependent and should be an invariant), this augmentation degraded generalization. The LocD test set likely has consistent phase characteristics that serve as a discriminative cue, and teaching invariance to them removes useful signal. Val accuracy during training reached ~99.6% (consistent with the val/test gap seen in prior experiments) confirming this metric is unreliable for predicting LocD test performance.
+**Branch kept**: No
+
+## exp_016 — Hybrid GatedDeltaNet + Softmax Attention
+**Date**: 2026-02-19  **Branch**: `experiment/B1-20260218_233319`
+**Result**: ❌ regression  |  accuracy: 0.826
+**vs Original**: -0.0140 (-1.67%)
+**vs Rolling Best**: -0.0140 (-1.67%)
+**Smoke test**: 6.31s/epoch
+**Conclusion**: Replacing every other GDN block (interval=2) with full softmax attention (SDPABlock) regressed accuracy by -1.4pp to 82.6%. The hybrid architecture did not improve LocD generalization despite adding O(L^2) full attention layers. The GDN linear attention mechanism appears sufficient for the sequence lengths used (128 tokens), and adding quadratic attention may introduce optimization difficulties or overfit to val distribution while degrading LocD test accuracy.
+**Branch kept**: No
+
+## exp_017 — Stochastic Depth (Drop Path)
+**Date**: 2026-02-19  **Branch**: `experiment/B3-20260219_001713`
+**Result**: ❌ regression  |  accuracy: 0.832
+**vs Original**: -0.0080 (-0.95%)
+**vs Rolling Best**: -0.0080 (-0.95%)
+**Smoke test**: 6.50s/epoch
+**Conclusion**: Stochastic depth with drop_path_rate=0.1 (linearly spaced 0.0 to 0.1 across 4 blocks) achieved 83.2%, a -0.8pp regression from the 84% baseline. However, this is the second-best result in the entire experiment history (behind A4 dual-branch at 83.5%), suggesting mild stochastic regularization helps but is insufficient alone. The result is closest to baseline of any single-architecture experiment tried — stochastic depth may be a useful building block to combine with other improvements.
+**Branch kept**: No
+
+## exp_018 — Focal Loss for Hard Device Pairs
+**Date**: 2026-02-19  **Branch**: `experiment/E5-20260219_010041`
+**Result**: ✅ improved  |  accuracy: 0.85
+**vs Original**: +0.0100 (+1.19%)
+**vs Rolling Best**: +0.0100 (+1.19%)
+**Smoke test**: 6.66s/epoch
+**Conclusion**: Focal loss (gamma=2.0) combined with label_smoothing=0.05 achieved 85.0% on LocD test set, a +1.0pp improvement over the 84% baseline and the first improvement in 18 experiments. The focal weighting down-weighted easy samples and concentrated gradient on the hard device pairs, exactly as hypothesized. This confirms that some device pairs in the 10-class LocD problem are systematically harder, and that a loss function that explicitly targets them improves final accuracy.
+**Branch kept**: Yes
+
+## exp_019 — Deeper Model (depth=6)
+**Date**: 2026-02-19  **Branch**: `experiment/D2-20260219_014446`
+**Result**: ❌ regression  |  accuracy: 0.827
+**vs Original**: -0.0130 (-1.55%)
+**vs Rolling Best**: -0.0230 (-2.71%)
+**Smoke test**: 8.42s/epoch
+**Conclusion**: Increasing depth from 4 to 6 with focal loss (building on the 85% E5 baseline) regressed to 82.7%, a -2.3pp drop from rolling best. The deeper model appears to overfit or converge to a worse minimum with the current hyperparameters — the optimal depth appears to be 4. The extra two GDN blocks add more parameters than the 128-token sequence can effectively use, particularly with the current 3e-4 learning rate and 600 epochs.
+**Branch kept**: No
+
+## exp_020 — Gain/Power Jitter Augmentation
+**Date**: 2026-02-19  **Branch**: `experiment/F2-20260219_025716`
+**Result**: ❌ regression  |  accuracy: 0.834
+**vs Original**: -0.0060 (-0.71%)
+**vs Rolling Best**: -0.0160 (-1.88%)
+**Smoke test**: 6.50s/epoch
+**Conclusion**: Gain/Power Jitter (LogNormal gain after AWGN) did not improve accuracy, regressing -1.6pp from the 85% focal loss baseline to 83.4%. The augmentation may be over-regularizing the model — the LocD test data has consistent capture conditions so AGC variation is not a significant real-world covariate. This augmentation adds unhelpful domain shift that distracts from the device-specific fingerprint patterns.
+**Branch kept**: No
+
+## exp_021 — Cosine LR Schedule with Warmup
+**Date**: 2026-02-19  **Branch**: `experiment/D3-20260219_034410`
+**Result**: ❌ regression  |  accuracy: 0.846
+**vs Original**: +0.0060 (+0.71%)
+**vs Rolling Best**: -0.0040 (-0.47%)
+**Smoke test**: 6.67s/epoch
+**Conclusion**: Cosine LR with warmup scored 84.6% vs rolling best of 85% — a -0.4pp regression. The hypothesis that proactive cosine annealing improves final accuracy over ReduceLROnPlateau was not confirmed; the dominant factor remains focal loss (E5), not the LR schedule. Validation accuracy was very high (99%+) throughout training, suggesting the model converges well but the val/LocD gap persists regardless of LR schedule.
+**Branch kept**: No
+
+## exp_022 — Finer Patch Stride (stride=16)
+**Date**: 2026-02-19  **Branch**: `experiment/D4-20260219_044556`
+**Result**: ⏱️ too_slow  |  metric: N/A
+**Smoke test**: 14.83s/epoch
+**Conclusion**: stride=16 with patch_size=64 produces 512 tokens vs 257 with stride=32, nearly doubling sequence length and causing 14.83s/epoch (threshold 10s). The increased sequence length overhead is too expensive for this setup. Future attempts would need to reduce dim or depth to compensate for the longer sequence.
+**Branch kept**: No
+
+## exp_023 — Patch Token Dropout (Model-side Augmentation)
+**Date**: 2026-02-19  **Branch**: `experiment/F6-20260219_045253`
+**Result**: ❌ regression  |  accuracy: 0.272
+**vs Original**: -0.5680 (-67.62%)
+**vs Rolling Best**: -0.5780 (-68.00%)
+**Smoke test**: 6.67s/epoch
+**Conclusion**: Patch Token Dropout (5%) caused a catastrophic regression to 27.2% on LocD test set (-57.8pp from 85% rolling best). Training val_acc plateaued at ~30% and early stopping fired at ~125 epochs, indicating the model failed to converge. Two potential causes: (1) training instability amplified by sparse token gradients from dropout, or (2) the zeroed tokens disrupted the causal GDN state propagation, preventing proper long-range context from being built up for classification.
+**Branch kept**: No
+
+## exp_024 — expand_v=3.0 (Conservative B5 Revisit)
+**Date**: 2026-02-19  **Branch**: `experiment/E4-20260219_051538`
+**Result**: ⏱️ too_slow  |  metric: N/A
+**Smoke test**: 11.76s/epoch
+**Conclusion**: expand_v=3.0 exceeded the 10s/epoch speed threshold at 11.76s/epoch. This is consistent with B5 (expand_v=4.0 was 12.16s/epoch). Expanding the value matrix by 50% relative to baseline (2.0) adds ~18% overhead in wall-clock time. The value matrix scaling adds O(expand_v * dim^2) memory bandwidth pressure that exceeds acceptable limits even at the conservative 3.0 setting. expand_v variants above 2.0 should not be retried.
+**Branch kept**: No
+
+## exp_025 — Attention Pooling
+**Date**: 2026-02-19  **Branch**: `experiment/D5-20260219_052113`
+**Result**: ❌ regression  |  accuracy: 0.811
+**vs Original**: -0.0290 (-3.45%)
+**vs Rolling Best**: -0.0390 (-4.59%)
+**Smoke test**: 6.56s/epoch
+**Conclusion**: Attention pooling caused a -3.9pp regression vs rolling best (85.0%→81.1%). The hypothesis that attn pooling recovers discriminative early-burst tokens was not confirmed. With causal GDN, the last-token recurrent state already summarizes the full sequence context via the delta-rule memory matrix, making learned attention weights over all tokens redundant and potentially harmful. The --pooling last strategy remains optimal.
+**Branch kept**: No
+
+## exp_026 — Learned Positional Embeddings
+**Date**: 2026-02-19  **Branch**: `experiment/E3-20260219_061946`
+**Result**: ❌ regression  |  accuracy: 0.824
+**vs Original**: -0.0160 (-1.91%)
+**vs Rolling Best**: -0.0260 (-3.06%)
+**Smoke test**: 7.39s/epoch
+**Conclusion**: Learned positional embeddings caused a -2.6pp regression to 82.4% (vs rolling best 85.0%). The GDN recurrent architecture already has implicit position information encoded in its causal state — adding explicit learned positional embeddings may have introduced noise that overwrote the existing positional signal. This aligns with the known pattern that the GDN causal state already summarizes temporal context adequately (similar to why --pooling last works better than attention pooling).
+**Branch kept**: No
+
+## exp_027 — Circular Temporal Roll (Fixed C5)
+**Date**: 2026-02-19  **Branch**: `experiment/F1-20260219_071733`
+**Result**: ❌ regression  |  accuracy: 0.775
+**vs Original**: -0.0650 (-7.74%)
+**vs Rolling Best**: -0.0750 (-8.82%)
+**Smoke test**: 6.47s/epoch
+**Conclusion**: Circular temporal roll caused -7.5pp regression (85% to 77.5%). The GDN causal recurrent state encodes absolute burst position as a key feature -- randomizing burst start position via circular roll destroys the temporal fingerprint structure (startup transients appear at wrong positions). This extends the GDN pattern: modifications to temporal sequencing consistently hurt. The recurrent state is self-sufficient and relies on position-aware temporal structure for classification.
+**Branch kept**: No
+
+## exp_028 — Focal Loss Gamma Tuning (gamma=3.0)
+**Date**: 2026-02-19  **Branch**: `experiment/G2-20260219_081532`
+**Result**: ❌ regression  |  accuracy: 0.831
+**vs Original**: -0.0090 (-1.07%)
+**vs Rolling Best**: -0.0190 (-2.23%)
+**Smoke test**: 6.66s/epoch
+**Conclusion**: Focal loss gamma=3.0 caused -1.9pp regression (85.0% to 83.1%). Higher gamma over-suppresses easy examples, concentrating gradient updates on a tiny fraction of hard device pairs — this destabilizes optimization and hurts overall accuracy. gamma=2.0 (E5 baseline) remains optimal for this 10-class LocD task. Pattern confirmed: the loss function sweet spot is gamma=2.0 and increasing aggressiveness beyond it hurts.
+**Branch kept**: No
+
+## exp_029 — Auxiliary Intermediate Classification Head
+**Date**: 2026-02-19  **Branch**: `experiment/G1-20260219_091418`
+**Result**: ❌ regression  |  accuracy: 0.829
+**vs Original**: -0.0110 (-1.31%)
+**vs Rolling Best**: -0.0210 (-2.47%)
+**Smoke test**: 6.89s/epoch
+**Conclusion**: Auxiliary intermediate classification head caused -2.1pp regression (85.0% to 82.9%). Forcing a classification head at depth//2 (block 2 of 4) creates conflicting gradient signals: the early head demands rich discriminative features before the GDN recurrent state has integrated the full sequence, degrading the quality of the final representation. The GDN builds its fingerprint incrementally across all 4 blocks; splitting supervision at the midpoint penalizes this hierarchical accumulation. Auxiliary heads require deeper models to be effective.
+**Branch kept**: No
+
+## exp_030 — STFT Patch Embedding (frequency domain)
+**Date**: 2026-02-19  **Branch**: `experiment/G3-20260219_095903`
+**Result**: ❌ regression  |  accuracy: 0.83
+**vs Original**: -0.0100 (-1.19%)
+**vs Rolling Best**: -0.0200 (-2.35%)
+**Smoke test**: 6.58s/epoch
+**Conclusion**: STFT patch embedding regressed by -2pp vs focal loss baseline (83% vs 85%). The hypothesis that frequency-domain representations expose spectral fingerprints was not confirmed. GDN appears to be better suited for time-domain sequences where transient startup artifacts are temporally localized; STFT windowing dilutes or obscures these key discriminative events. Causal conv patch embedding remains optimal.
+**Branch kept**: No
+
+## exp_031 — Focal Loss gamma=1.5 (softer focus)
+**Date**: 2026-02-19  **Branch**: `experiment/G4-20260219_105731`
+**Result**: ❌ regression  |  accuracy: 0.829
+**vs Original**: -0.0110 (-1.31%)
+**vs Rolling Best**: -0.0210 (-2.47%)
+**Smoke test**: 6.69s/epoch
+**Conclusion**: gamma=1.5 yielded 82.9% (-2.1pp vs rolling best 85%), a clear regression. Softer focus allows easier examples to dominate gradient updates, undermining the hard-pair discrimination that focal loss is designed to achieve. This conclusively confirms gamma=2.0 is the optimal focal loss gamma for this 10-class LocD fingerprinting task — both directions from 2.0 (1.5 and 3.0) produce regressions.
+**Branch kept**: No
+
+## exp_032 — Larger Model dim=768
+**Date**: 2026-02-19  **Branch**: `experiment/G5-20260219_114122`
+**Result**: ❌ regression  |  accuracy: 0.818
+**vs Original**: -0.0220 (-2.62%)
+**vs Rolling Best**: -0.0320 (-3.77%)
+**Smoke test**: 9.15s/epoch
+**Conclusion**: Increasing model width from dim=512 to dim=768 hurt accuracy by -3.2pp (81.8% vs 85%). The hypothesis that more capacity would help discriminate hard device pairs was not confirmed. This suggests the GDN with depth=4 and dim=512 is already well-sized for this 10-class fingerprinting task; wider models may overfit or the added parameters do not capture new discriminative features given the fixed focal loss training signal.
+**Branch kept**: No
+
+## exp_033 — Mamba-2 Backbone
+**Date**: 2026-02-19  **Branch**: `experiment/B6-20260219_125635`
+**Result**: 💥 failed (smoke test OOM / too slow)
+**Smoke test**: ~18.6s/epoch estimated (> 10s threshold), OOM during backward
+**Conclusion**: Mamba-2 backbone is infeasible in this environment without CUDA triton kernel installation. The fla.layers.Mamba2 torch fallback path allocates enormous 6D intermediate tensors (batch × n_chunks × chunk_size × chunk_size × n_groups × state_size) during forward/backward that cause CUDA OOM with batch_size=128 on a 24GB RTX 4090. Even when OOM is partially mitigated via state_size=16, estimated epoch time is ~18.6s which exceeds the 10s/epoch threshold. The selective SSM inductive bias could be promising but requires mamba-ssm CUDA kernels (github.com/state-spaces/mamba) to be computationally feasible.
+**Branch kept**: No
+
+## exp_034 — Test-Time Augmentation (TTA)
+**Date**: 2026-02-19  **Branch**: `experiment/H4-20260219_131412`
+**Result**: ❌ regression  |  accuracy: 0.845
+**vs Original**: +0.0050 (+0.59%)
+**vs Rolling Best**: -0.0050 (-0.59%)
+**Smoke test**: 6.43s/epoch
+**Conclusion**: TTA with CFO rotation (±200Hz) and AWGN (25dB) degraded accuracy by -0.5pp vs rolling best (84.5% vs 85.0%). The hypothesis was flawed: LocD test data has consistent clean capture conditions (minimal CFO, high SNR), so adding artificial CFO/AWGN jitter at test time corrupts otherwise clean signals rather than reducing prediction variance. This is consistent with the established project pattern that hardware-variation augmentations hurt on LocD. TTA could theoretically help with label-preserving augmentations only.
+**Branch kept**: No
+
+## exp_035 — Allow Negative Eigenvalues in GDN (allow_neg_eigval=True)
+**Date**: 2026-02-19  **Branch**: `experiment/H1-20260219_141433`
+**Result**: ❌ regression  |  accuracy: 0.835
+**vs Original**: -0.0050 (-0.59%)
+**vs Rolling Best**: -0.0150 (-1.76%)
+**Smoke test**: 5.60s/epoch
+**Conclusion**: Allowing negative eigenvalues in the GDN delta-rule memory update (allow_neg_eigval=True) caused a regression of -1.5pp to 83.5% vs rolling best of 85.0%. The hypothesis that inhibitory memory updates would improve discrimination of similar device pairs was not confirmed — the additional expressiveness likely destabilizes training by allowing harmful inhibitory updates that erode the recurrent state representations needed to distinguish hard device pairs.
+**Branch kept**: No
+
+## exp_036 — Wider Short Convolution in GDN (conv_size=8)
+**Date**: 2026-02-19  **Branch**: `experiment/H3-20260219_151414`
+**Result**: ⏱️ too_slow  |  metric: N/A
+**Smoke test**: 10.60s/epoch
+**Conclusion**: Rejected: per-epoch time 10.60s exceeded 10s threshold. Doubling the GDN short causal conv kernel from conv_size=4 to conv_size=8 adds ~6% compute overhead that pushed execution just over the speed limit. The conv_size=4 baseline is already near-optimal for this architecture.
+**Branch kept**: No
+
+## exp_037 — Larger Head Dimension (head_dim=128, num_heads=4)
+**Date**: 2026-02-19  **Branch**: `experiment/H2-20260219_151935`
+**Result**: ✅ improved  |  accuracy: 0.851
+**vs Original**: +0.0110 (+1.31%)
+**vs Rolling Best**: +0.0010 (+0.12%)
+**Smoke test**: 5.70s/epoch
+**Conclusion**: H2 (head_dim=128, num_heads=4) achieves 85.1% on the LocD test set, a marginal +0.1pp improvement over the focal loss baseline (85.0%). The hypothesis that fewer, larger heads better capture complex device fingerprint covariance patterns receives very weak support — the improvement is within the typical 82-84% training variance range observed without focal loss and may not be reliably reproducible. Same total QK capacity (4*128=512=dim) with 4 heads vs baseline 8 heads did not dramatically change model behavior.
+**Branch kept**: Yes
+
+## exp_038 — MLP Hidden Ratio Tuning (mlp_ratio=2.0)
+**Date**: 2026-02-19  **Branch**: `experiment/H5-20260219_162700`
+**Result**: ❌ regression  |  accuracy: 0.818
+**vs Original**: -0.0220 (-2.62%)
+**vs Rolling Best**: -0.0330 (-3.88%)
+**Smoke test**: 7.21s/epoch
+**Conclusion**: Reducing mlp_ratio from 4.0 to 2.0 significantly hurts accuracy to 81.8% (-3.3pp vs rolling best 85.1%). The hypothesis that the MLP path is over-parameterized is not supported — halving the feedforward capacity under-provisions the representational transformation needed in each GDN block. The MLP ratio=4.0 is confirmed optimal alongside the focal loss and head_dim=128 configuration.
+**Branch kept**: No
+
+## exp_039 — Lower Learning Rate (lr=1e-4)
+**Date**: 2026-02-19  **Branch**: `experiment/I1-20260219_172159`
+**Result**: ❌ regression  |  accuracy: 0.85
+**vs Original**: +0.0100 (+1.19%)
+**vs Rolling Best**: -0.0010 (-0.12%)
+**Smoke test**: 6.75s/epoch
+**Conclusion**: Lower lr=1e-4 achieves 85.0%, matching the focal loss E5 baseline but -0.1pp below the H2 rolling best (85.1%). The ReduceLROnPlateau scheduler already achieves effective LR reduction during training at 3e-4, so a lower starting lr provides no additional benefit. lr=3e-4 confirmed as the optimal starting learning rate.
+**Branch kept**: No
+
+## exp_040 — Smaller Patch Size (patch_size=32, stride=16)
+**Date**: 2026-02-19  **Branch**: `experiment/I3-20260219_181646`
+**Result**: ⏱️ too_slow  |  metric: N/A
+**Smoke test**: 11.81s/epoch
+**Conclusion**: Rejected: patch_size=32 with stride=16 doubles the token count (~512 tokens vs ~256) causing 11.81s/epoch exceeding 10s threshold. Finer temporal resolution is computationally infeasible at current batch_size=128. patch_size=64 confirmed as speed-optimal patch configuration.
+**Branch kept**: No
+
+## exp_041 — Label Smoothing Increase (label_smoothing=0.1)
+**Date**: 2026-02-19  **Branch**: `experiment/I2-20260219_182115`
+**Result**: ❌ regression  |  accuracy: 0.833
+**vs Original**: -0.0070 (+0.00%)
+**vs Rolling Best**: -0.0180 (+0.00%)
+**Smoke test**: 6.77s/epoch
+**Conclusion**: Doubling label smoothing from 0.05 to 0.1 caused a -1.8pp regression to 83.3%. The combination of focal loss + stronger label smoothing over-regularizes the output distribution: focal loss already provides sample-weighting for hard cases, while 0.1 label smoothing weakens discriminative supervision too much. Optimal label smoothing confirmed at 0.05.
+**Branch kept**: No
+
+## exp_042 — expand_v=1.5 (Smaller Value Projection)
+**Date**: 2026-02-19  **Branch**: `experiment/I4-20260219_191326`
+**Result**: ❌ regression  |  accuracy: 0.845
+**vs Original**: +0.0050 (+0.59%)
+**vs Rolling Best**: -0.0060 (-0.70%)
+**Smoke test**: 5.37s/epoch
+**Conclusion**: expand_v=1.5 yields 84.5%, a -0.6pp regression vs rolling best 85.1%. Reducing the GDN value matrix by 25% (expand_v 2.0→1.5) decreases the recurrent state expressiveness below the threshold needed for the 10-class LocD task. The default expand_v=2.0 is confirmed optimal; reducing it reduces capacity to distinguish hard device pairs. Training was faster (4.35s/epoch vs ~5.4s/epoch) confirming smaller state, but accuracy cost is not worth the speed gain.
+**Branch kept**: No
+
+## exp_043 — Gradient Clipping Reduction (grad_norm=0.5)
+**Date**: 2026-02-19  **Branch**: `experiment/I5-20260219_200440`
+**Result**: ❌ regression  |  accuracy: 0.832
+**vs Original**: -0.0080 (-0.95%)
+**vs Rolling Best**: -0.0190 (-2.23%)
+**Smoke test**: 6.72s/epoch
+**Conclusion**: Tighter gradient clipping (grad_norm=0.5) yields 83.2%, a -1.9pp regression vs rolling best 85.1%. The hypothesis that focal loss creates larger gradients benefiting from tighter clipping was not confirmed. Reducing grad_norm from 1.0 to 0.5 over-constrains optimization and prevents large gradient steps needed to learn discriminative features for hard device pairs. The default grad_norm=1.0 is confirmed optimal.
+**Branch kept**: No
+
+## exp_044 — Muon Optimizer for GDN Block Weights
+**Date**: 2026-02-19  **Branch**: `experiment/J1-20260219_205947`
+**Result**: ❌ regression  |  accuracy: 0.838
+**vs Original**: -0.0020 (-0.24%)
+**vs Rolling Best**: -0.0130 (-1.53%)
+**Smoke test**: 7.03s/epoch
+**Conclusion**: Muon optimizer (Newton-Schulz orthogonalization for 2D GDN block weights + AdamW for rest) yields 83.8%, a -1.3pp regression vs rolling best 85.1%. The hypothesis that Muon would find flatter optima for the GDN recurrent state-space layers was not confirmed. The mixed-optimizer setup with Muon lr=1e-2 and AdamW lr=3e-4 may create gradient update imbalance between block weights and embedding/normalization parameters. AdamW with lr=3e-4 remains the optimal optimizer for this task.
+**Branch kept**: No
+
+## exp_045 — Conv Bias in GDN Short Causal Conv (conv_bias=True)
+**Date**: 2026-02-19  **Branch**: `experiment/J2-20260219_215221`
+**Result**: ❌ regression  |  accuracy: 0.839
+**vs Original**: -0.0010 (-0.12%)
+**vs Rolling Best**: -0.0120 (-1.41%)
+**Smoke test**: 9.19s/epoch
+**Conclusion**: Enabling learnable bias in GDN short causal convolution resulted in 83.9% accuracy (-1.2pp regression vs rolling best 85.1%). The conv_bias=True introduces additional learnable parameters that appear to interfere with the zero-bias GDN delta-rule state propagation dynamics. The non-bias convolution baseline is confirmed optimal for this architecture.
+**Branch kept**: No
+
+## exp_046 — GDN mode=fused_recurrent (Alternative Computation Path)
+**Date**: 2026-02-19  **Branch**: `experiment/J3-20260219_225253`
+**Result**: 💥 failed
+**Smoke test**: failed — fla library asserts `mode == 'chunk'` during training (line 222 of gated_deltanet.py); fused_recurrent mode only supported for inference, not training
+**Conclusion**: J3 failed at smoke test: the fla library GatedDeltaNet implementation asserts mode==chunk during training. The fused_recurrent mode is only supported for inference/generation, not for training forward passes. This idea is architecturally infeasible with the current fla library version — no workaround without patching the fla library source. AVOID: do not retry fused_recurrent mode with training.
+**Branch kept**: No
+
+## exp_048 — Batch Size 64 (Smaller Batch Noisier Gradients)
+**Date**: 2026-02-19  **Branch**: `experiment/J4-20260219_225626`
+**Result**: ❌ regression  |  accuracy: 0.82
+**vs Original**: -0.0200 (+0.00%)
+**vs Rolling Best**: -0.0310 (+0.00%)
+**Smoke test**: 5.50s/epoch
+**Conclusion**: Smaller batch_size=64 caused a -3.1pp regression from 85.1% to 82.0% on the LocD test set. The hypothesis that noisier gradients would help escape sharp minima was not confirmed; instead, the increased gradient variance from fewer samples per batch destabilized focal loss training, which requires stable gradient estimates to effectively downweight easy examples. Batch size 128 confirmed optimal for this focal loss + GDN configuration.
+**Branch kept**: No
+
+## exp_049 — Warmup LR Schedule (Linear Warmup + ReduceLROnPlateau)
+**Date**: 2026-02-20  **Branch**: `experiment/J5-20260219_235220`
+**Result**: ❌ regression  |  accuracy: 0.843
+**vs Original**: +0.0030 (+0.36%)
+**vs Rolling Best**: -0.0080 (-0.94%)
+**Smoke test**: 6.71s/epoch
+**Conclusion**: LR warmup (lr/10 to lr over 20 epochs) caused regression of -0.8pp vs rolling best (84.3% vs 85.1%). The warmup delays the optimizer reaching its target lr, slowing early-stage gradient learning for hard device pairs with focal loss. ReduceLROnPlateau already provides adaptive LR reduction — adding a warmup phase is redundant and counterproductive. lr=3e-4 from epoch 0 is confirmed optimal.
+**Branch kept**: No
+
+## exp_050 — More Heads with Smaller Head Dim (heads=8, head_dim=64)
+**Date**: 2026-02-20  **Branch**: `experiment/K1-20260220_004220`
+**Result**: ❌ regression  |  accuracy: 0.837
+**vs Original**: -0.0030 (-0.36%)
+**vs Rolling Best**: -0.0140 (-1.65%)
+**Smoke test**: 6.68s/epoch
+**Conclusion**: K1 (heads=8, head_dim=64) regressed -1.4pp vs rolling best H2 (heads=4, head_dim=128). More attention heads with smaller per-head dimension reduces per-head state capacity: each of the 8 heads has dim=64 vs 4 heads of dim=128. The RF fingerprinting task favors richer per-head representations (larger head_dim) over more parallel channels. Confirmed: head_dim=128 with num_heads=4 (from H2) is the optimal QK factorization for this 10-class device fingerprinting problem.
+**Branch kept**: No

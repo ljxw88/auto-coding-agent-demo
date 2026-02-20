@@ -1,0 +1,35 @@
+{
+  "idea_id": "E5",
+  "idea_title": "Focal Loss for Hard Device Pairs",
+  "git_branch": "experiment/E5-20260219_010041",
+  "outcome": "improved",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.66,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.85
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.85,
+    "delta": 0.01,
+    "delta_pct": 1.19,
+    "improved": true
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.85,
+    "delta": 0.01,
+    "delta_pct": 1.19,
+    "improved": true
+  },
+  "branch_kept": true,
+  "conclusion": "Focal loss (gamma=2.0) combined with label_smoothing=0.05 achieved 85.0% on LocD test set, a +1.0pp improvement over the 84% baseline and the first improvement in 18 experiments. The focal weighting down-weighted easy samples and concentrated gradient on the hard device pairs, exactly as hypothesized. This confirms that some device pairs in the 10-class LocD problem are systematically harder, and that a loss function that explicitly targets them improves final accuracy.",
+  "id": "exp_018"
+}

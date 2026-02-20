@@ -1,0 +1,35 @@
+{
+  "idea_id": "G2",
+  "idea_title": "Focal Loss Gamma Tuning (gamma=3.0)",
+  "git_branch": "experiment/G2-20260219_081532",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.66,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.831
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.831,
+    "delta": -0.009,
+    "delta_pct": -1.071,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.831,
+    "delta": -0.019,
+    "delta_pct": -2.235,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Focal loss gamma=3.0 caused -1.9pp regression (85.0% to 83.1%). Higher gamma over-suppresses easy examples, concentrating gradient updates on a tiny fraction of hard device pairs \u2014 this destabilizes optimization and hurts overall accuracy. gamma=2.0 (E5 baseline) remains optimal for this 10-class LocD task. Pattern confirmed: the loss function sweet spot is gamma=2.0 and increasing aggressiveness beyond it hurts.",
+  "id": "exp_028"
+}

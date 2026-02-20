@@ -1,0 +1,15 @@
+{
+  "idea_id": "E4",
+  "idea_title": "expand_v=3.0 (Conservative B5 Revisit)",
+  "git_branch": "experiment/E4-20260219_051538",
+  "outcome": "too_slow",
+  "smoke_test": {
+    "status": "too_slow",
+    "avg_seconds_per_epoch": 11.76,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "branch_kept": false,
+  "conclusion": "expand_v=3.0 exceeded the 10s/epoch speed threshold at 11.76s/epoch. This is consistent with B5 (expand_v=4.0 was 12.16s/epoch). Expanding the value matrix by 50% relative to baseline (2.0) adds ~18% overhead in wall-clock time. The value matrix scaling adds O(expand_v * dim^2) memory bandwidth pressure that exceeds acceptable limits even at the conservative 3.0 setting. expand_v variants above 2.0 should not be retried.",
+  "id": "exp_024"
+}

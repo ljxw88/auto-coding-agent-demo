@@ -1,0 +1,35 @@
+{
+  "idea_id": "F3",
+  "idea_title": "Constant Phase Rotation Augmentation",
+  "git_branch": "experiment/F3-20260218_224944",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.54,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.815
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.815,
+    "delta": -0.025,
+    "delta_pct": -2.976,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.815,
+    "delta": -0.025,
+    "delta_pct": -2.976,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Adding random U(0,2pi) constant phase rotation per burst (applied before CFO) regressed LocD test accuracy by -2.5pp to 81.5%. Despite the sound motivation (absolute phase is receiver-LO dependent and should be an invariant), this augmentation degraded generalization. The LocD test set likely has consistent phase characteristics that serve as a discriminative cue, and teaching invariance to them removes useful signal. Val accuracy during training reached ~99.6% (consistent with the val/test gap seen in prior experiments) confirming this metric is unreliable for predicting LocD test performance.",
+  "id": "exp_015"
+}

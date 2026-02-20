@@ -1,0 +1,35 @@
+{
+  "idea_id": "H1",
+  "idea_title": "Allow Negative Eigenvalues in GDN (allow_neg_eigval=True)",
+  "git_branch": "experiment/H1-20260219_141433",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 5.6,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.835
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.835,
+    "delta": -0.005,
+    "delta_pct": -0.595,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.835,
+    "delta": -0.015,
+    "delta_pct": -1.765,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Allowing negative eigenvalues in the GDN delta-rule memory update (allow_neg_eigval=True) caused a regression of -1.5pp to 83.5% vs rolling best of 85.0%. The hypothesis that inhibitory memory updates would improve discrimination of similar device pairs was not confirmed \u2014 the additional expressiveness likely destabilizes training by allowing harmful inhibitory updates that erode the recurrent state representations needed to distinguish hard device pairs.",
+  "id": "exp_035"
+}

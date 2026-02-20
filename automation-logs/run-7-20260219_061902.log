@@ -1,0 +1,19 @@
+The background task already completed and we already processed its result (the evaluator returned the full_train result inline). The session is complete.
+
+---
+
+**Session complete.** One experiment run end-to-end:
+
+| Step | Result |
+|------|--------|
+| Idea selected | E3 — Learned Positional Embeddings |
+| Branch | `experiment/E3-20260219_061946` (deleted) |
+| Smoke test | PASSED — 7.39s/epoch |
+| Full training | 600 epochs, ~52 min |
+| LocD test accuracy | **82.4%** |
+| vs rolling best | -2.6pp (regression) |
+| Outcome | Regression — branch deleted |
+
+**Key finding:** Learned positional embeddings hurt the GDN. The causal recurrent state already encodes position implicitly — adding explicit learned positional embeddings introduced conflicting signals that degraded performance. This is consistent with the broader pattern: GDN's self-sufficient state dynamics resist external augmentation of its internal state (same reason attention pooling hurt).
+
+**Stop condition:** 8 consecutive failures (exp_019–026) exceeds `max_consecutive_failures=5`. Next session must fix `idea_generator.py` and generate new ideas before running another experiment. Only **F1 (Circular Temporal Roll)** and **B6 (Mamba-2 Backbone)** remain in the viable backlog.

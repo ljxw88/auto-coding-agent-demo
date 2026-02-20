@@ -1,0 +1,37 @@
+{
+  "idea_id": "A1",
+  "idea_title": "Multi-scale Patch Embedding",
+  "git_branch": "experiment/A1-20260218_155623",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 9.62,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 96.21
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.811
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.811,
+    "delta": -0.029,
+    "delta_pct": -3.452,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.811,
+    "delta": -0.029,
+    "delta_pct": -3.452,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "The multi-scale patch embedding hypothesis was not confirmed \u2014 accuracy dropped from 84% to 81.1% (-2.9pp). Averaging three causal conv branches (kernel sizes 32, 64, 128) with stride 64 appears to dilute discriminative features: the optimal single-scale (64) gets averaged with less informative scales. Using stride=64 instead of the baseline stride=32 also reduced temporal resolution from 257 to 129 tokens, likely hurting classification. The result is a clear regression.",
+  "id": "exp_004"
+}

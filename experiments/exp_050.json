@@ -1,0 +1,37 @@
+{
+  "idea_id": "K1",
+  "idea_title": "More Heads with Smaller Head Dim (heads=8, head_dim=64)",
+  "git_branch": "experiment/K1-20260220_004220",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.68,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 66.82
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.837
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.837,
+    "delta": -0.003,
+    "delta_pct": -0.357,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.837,
+    "delta": -0.014,
+    "delta_pct": -1.645,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "K1 (heads=8, head_dim=64) regressed -1.4pp vs rolling best H2 (heads=4, head_dim=128). More attention heads with smaller per-head dimension reduces per-head state capacity: each of the 8 heads has dim=64 vs 4 heads of dim=128. The RF fingerprinting task favors richer per-head representations (larger head_dim) over more parallel channels. Confirmed: head_dim=128 with num_heads=4 (from H2) is the optimal QK factorization for this 10-class device fingerprinting problem.",
+  "id": "exp_050"
+}

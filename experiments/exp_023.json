@@ -1,0 +1,35 @@
+{
+  "idea_id": "F6",
+  "idea_title": "Patch Token Dropout (Model-side Augmentation)",
+  "git_branch": "experiment/F6-20260219_045253",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.67,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.272
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.272,
+    "delta": -0.568,
+    "delta_pct": -67.619,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.272,
+    "delta": -0.578,
+    "delta_pct": -68.0,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Patch Token Dropout (5%) caused a catastrophic regression to 27.2% on LocD test set (-57.8pp from 85% rolling best). Training val_acc plateaued at ~30% and early stopping fired at ~125 epochs, indicating the model failed to converge. Two potential causes: (1) training instability amplified by sparse token gradients from dropout, or (2) the zeroed tokens disrupted the causal GDN state propagation, preventing proper long-range context from being built up for classification.",
+  "id": "exp_023"
+}

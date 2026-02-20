@@ -1,0 +1,36 @@
+{
+  "idea_id": "H2",
+  "idea_title": "Larger Head Dimension (head_dim=128, num_heads=4)",
+  "git_branch": "experiment/H2-20260219_151935",
+  "outcome": "improved",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 5.7,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.851
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.851,
+    "delta": 0.011,
+    "delta_pct": 1.31,
+    "improved": true
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.851,
+    "delta": 0.001,
+    "delta_pct": 0.118,
+    "improved": true
+  },
+  "branch_kept": true,
+  "conclusion": "H2 (head_dim=128, num_heads=4) achieves 85.1% on the LocD test set, a marginal +0.1pp improvement over the focal loss baseline (85.0%). The hypothesis that fewer, larger heads better capture complex device fingerprint covariance patterns receives very weak support \u2014 the improvement is within the typical 82-84% training variance range observed without focal loss and may not be reliably reproducible. Same total QK capacity (4*128=512=dim) with 4 heads vs baseline 8 heads did not dramatically change model behavior.",
+  "id": "exp_037"
+}

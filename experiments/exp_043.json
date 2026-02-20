@@ -1,0 +1,36 @@
+{
+  "idea_id": "I5",
+  "idea_title": "Gradient Clipping Reduction (grad_norm=0.5)",
+  "git_branch": "experiment/I5-20260219_200440",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.72,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.832
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.832,
+    "delta": -0.008,
+    "delta_pct": -0.952,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.832,
+    "delta": -0.019,
+    "delta_pct": -2.233,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Tighter gradient clipping (grad_norm=0.5) yields 83.2%, a -1.9pp regression vs rolling best 85.1%. The hypothesis that focal loss creates larger gradients benefiting from tighter clipping was not confirmed. Reducing grad_norm from 1.0 to 0.5 over-constrains optimization and prevents large gradient steps needed to learn discriminative features for hard device pairs. The default grad_norm=1.0 is confirmed optimal.",
+  "id": "exp_043"
+}

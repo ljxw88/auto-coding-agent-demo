@@ -1,0 +1,36 @@
+{
+  "idea_id": "J1",
+  "idea_title": "Muon Optimizer for GDN Block Weights",
+  "git_branch": "experiment/J1-20260219_205947",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 7.03,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.838
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.838,
+    "delta": -0.002,
+    "delta_pct": -0.238,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.838,
+    "delta": -0.013,
+    "delta_pct": -1.528,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Muon optimizer (Newton-Schulz orthogonalization for 2D GDN block weights + AdamW for rest) yields 83.8%, a -1.3pp regression vs rolling best 85.1%. The hypothesis that Muon would find flatter optima for the GDN recurrent state-space layers was not confirmed. The mixed-optimizer setup with Muon lr=1e-2 and AdamW lr=3e-4 may create gradient update imbalance between block weights and embedding/normalization parameters. AdamW with lr=3e-4 remains the optimal optimizer for this task.",
+  "id": "exp_044"
+}

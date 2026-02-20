@@ -1,186 +1,619 @@
 {
-  "project": "DFF Playground – RFFI with Causal Transformers",
+  "project": "DFF Playground \u2013 RFFI with Causal Transformers",
   "baseline_command": "python train_causal_iq_classifier.py --manifest ./shards/manifest.json --arch gateddeltanet --batch_size 128 --epochs 600 --lr 3e-4 --dim 512 --depth 4 --heads 8 --pooling last --patch_size 64 --weight_decay 0.0 --save_path ./saved_models/model_name.pth --patch_embed_type causal_conv --augment --compile",
   "ideas": [
     {
       "id": "A1",
-      "category": "Input Representation",
       "title": "Multi-scale Patch Embedding",
-      "description": "Extract patches at 2-3 scales simultaneously (e.g., kernel sizes 32, 64, 128) using parallel causal convs, each projecting to dim//3, then concatenate to dim. Feeds into the existing GatedDeltaNet backbone unchanged.",
-      "motivation": "Different hardware fingerprint signals manifest at different time scales: transient switching artifacts appear at fine scale (~32 samples), modulation imperfections at medium scale (~64), long-term drift at coarse scale (~128). A single patch size misses the rest.",
-      "files_to_change": ["model_arch/shared.py"],
       "implementation_notes": "Add MultiScaleCausalConvEmbed class to shared.py. Add patch_embed_type='multi_scale' option. In BaseCausalIQConfig add multi_scale_sizes list field.",
-      "effort": "medium",
-      "estimated_impact": "medium-high",
-      "priority": 9
+      "files_to_modify": [
+        "model_arch/shared.py"
+      ],
+      "expected_impact": "medium-high",
+      "hypothesis": "Different hardware fingerprint signals manifest at different time scales: transient switching artifacts appear at fine scale (~32 samples), modulation imperfections at medium scale (~64), long-term drift at coarse scale (~128). A single patch size misses the rest.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "A2",
-      "category": "Input Representation",
       "title": "Polar Form Feature Channels",
-      "description": "Compute instantaneous amplitude A[t]=sqrt(I^2+Q^2), instantaneous sin(phase)=Q/A, cos(phase)=I/A and append as 3 extra input channels alongside raw I/Q. Effective in_channels goes 2->5.",
-      "motivation": "Oscillator phase noise and PA nonlinearity — the dominant RFFI cues — directly imprint on amplitude envelope and phase trajectory. Making these explicit saves the model from re-learning the transform and can accelerate convergence.",
-      "files_to_change": ["model_arch/shared.py", "train_causal_iq_classifier.py"],
       "implementation_notes": "In BaseCausalIQBackbone.patch(): compute amp=sqrt(I^2+Q^2+eps), sin_phase=Q/amp, cos_phase=I/amp; cat to input before patch_embed. Add use_polar_features: bool = False to BaseCausalIQConfig. Adjust _embed_ch accordingly when building patch_embed. Expose --use_polar_features CLI flag. Note: use sin/cos instead of raw atan2 to avoid phase-wrap discontinuities.",
-      "effort": "low",
-      "estimated_impact": "medium-high",
-      "priority": 5
+      "files_to_modify": [
+        "model_arch/shared.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium-high",
+      "hypothesis": "Oscillator phase noise and PA nonlinearity \u2014 the dominant RFFI cues \u2014 directly imprint on amplitude envelope and phase trajectory. Making these explicit saves the model from re-learning the transform and can accelerate convergence.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "A3",
-      "category": "Input Representation",
       "title": "Differential IQ Channels",
-      "description": "Prepend delta-I[t]=I[t]-I[t-1] and delta-Q[t]=Q[t]-Q[t-1] as 2 extra input channels. in_channels goes 2->4.",
-      "motivation": "First-order differences emphasize rapid transient features (preamble edge, burst onset switching) that carry strong device identity while suppressing slowly-varying channel effects. Very cheap to compute.",
-      "files_to_change": ["model_arch/shared.py", "train_causal_iq_classifier.py"],
       "implementation_notes": "In BaseCausalIQBackbone.patch(): dx = torch.diff(x, dim=2, prepend=x[:,:,:1]); x = torch.cat([x, dx], dim=1). Add use_diff_channels: bool = False to BaseCausalIQConfig. Adjust _embed_ch. Expose --use_diff_channels CLI flag.",
-      "effort": "very_low",
-      "estimated_impact": "medium",
-      "priority": 2
+      "files_to_modify": [
+        "model_arch/shared.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "First-order differences emphasize rapid transient features (preamble edge, burst onset switching) that carry strong device identity while suppressing slowly-varying channel effects. Very cheap to compute.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "A4",
-      "category": "Input Representation",
       "title": "Dual-Branch Time+Frequency Fusion",
-      "description": "Run two parallel branches: (1) existing causal_conv GatedDeltaNet backbone on raw I/Q; (2) shallow 3-layer CNN on STFT spectrogram. Fuse both dim-sized embeddings via learned gating before the classification head.",
-      "motivation": "Time domain captures transient startup/hardware artifacts; frequency domain captures spectral leakage and sub-carrier power imbalance. Neither branch alone captures both. Fusion can yield the best of both representations.",
-      "files_to_change": ["model_arch/shared.py", "train_causal_iq_classifier.py"],
       "implementation_notes": "Create DualBranchClassifier wrapping two separate backbones (one causal_conv GDN, one stft CNN). Gating: gate = sigmoid(Linear(emb1 + emb2, 1)); out = gate*emb1 + (1-gate)*emb2. Add --arch dual_branch option.",
-      "effort": "high",
-      "estimated_impact": "high",
-      "priority": 14
+      "files_to_modify": [
+        "model_arch/shared.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "high",
+      "hypothesis": "Time domain captures transient startup/hardware artifacts; frequency domain captures spectral leakage and sub-carrier power imbalance. Neither branch alone captures both. Fusion can yield the best of both representations.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "B1",
-      "category": "Architecture",
       "title": "Hybrid GatedDeltaNet + Softmax Attention",
-      "description": "Interleave GatedDeltaNet blocks with standard causal SDPA blocks at ratio 3:1. With depth=4: [GDN, GDN, GDN, Transformer].",
-      "motivation": "GDN has O(L) complexity but compresses long-range context into a fixed-size state. A periodic full-attention layer can 'refresh' the state and capture global dependencies that GDN compresses away. Recent hybrid architectures consistently beat pure-linear or pure-softmax models.",
-      "files_to_change": ["model_arch/causal_iq_gateddeltanet.py", "model_arch/causal_iq_transformer.py", "train_causal_iq_classifier.py"],
-      "implementation_notes": "Create new model_arch/causal_iq_hybrid.py combining GatedDeltaNetBlock and TransformerBlock. CausalIQHybridConfig adds hybrid_attn_interval: int = 4 (every Nth block is SDPA). Add --arch hybrid to CLI.",
-      "effort": "medium",
-      "estimated_impact": "medium-high",
-      "priority": 8
+      "implementation_notes": "Implement entirely within causal_iq_gateddeltanet.py \u2014 DO NOT touch causal_iq_transformer.py. Add a SDPABlock(nn.Module) class inside causal_iq_gateddeltanet.py: uses torch.nn.functional.scaled_dot_product_attention with causal mask (is_causal=True), pre-norm with RMSNorm, residual. Add hybrid_attn_interval: int = 0 field to CausalIQGatedDeltaNetConfig (0 = disabled). In CausalIQGatedDeltaNetBackbone.__init__(), when hybrid_attn_interval > 0, replace every Nth block (e.g. block index % hybrid_attn_interval == hybrid_attn_interval-1) with an SDPABlock. Expose --hybrid_attn_interval int CLI flag (default 0). Start with interval=2 (every other block is SDPA).",
+      "files_to_modify": [
+        "model_arch/causal_iq_gateddeltanet.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium-high",
+      "hypothesis": "GDN has O(L) complexity but compresses long-range context into a fixed-size state. A periodic full-attention layer can 'refresh' the state and capture global dependencies that GDN compresses away. Recent hybrid architectures consistently beat pure-linear or pure-softmax models.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "B2",
-      "category": "Architecture",
       "title": "CLS Token Pooling",
-      "description": "Prepend a single learnable [CLS] token to the patch sequence and use the final [CLS] position's output as the classification embedding, instead of the last real patch token.",
-      "motivation": "With --pooling last, the last patch token acts as the summary but is still causally constrained during training. A dedicated [CLS] token can accumulate information from the entire sequence without the constraint of being a real-data token, yielding richer aggregation.",
-      "files_to_change": ["model_arch/shared.py", "train_causal_iq_classifier.py"],
       "implementation_notes": "Add cls_token = nn.Parameter(torch.zeros(1,1,dim)) to BaseCausalIQBackbone. Prepend to sequence in patch(). Add pooling='cls' option: return x[:,0,:]. Expose --pooling cls CLI option.",
-      "effort": "low",
-      "estimated_impact": "low-medium",
-      "priority": 11
+      "files_to_modify": [
+        "model_arch/shared.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "low-medium",
+      "hypothesis": "With --pooling last, the last patch token acts as the summary but is still causally constrained during training. A dedicated [CLS] token can accumulate information from the entire sequence without the constraint of being a real-data token, yielding richer aggregation.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "B3",
-      "category": "Architecture",
       "title": "Stochastic Depth (Drop Path)",
-      "description": "Add per-block drop path with linearly increasing rate from 0.0 to drop_path_rate (e.g., 0.1). Each block's residual path is skipped entirely (identity shortcut) with probability p during training.",
-      "motivation": "The baseline uses weight_decay=0.0 meaning there is NO explicit regularization whatsoever. Stochastic depth provides strong implicit regularization and acts as an ensemble over sub-networks at zero inference cost.",
-      "files_to_change": ["model_arch/shared.py", "model_arch/causal_iq_gateddeltanet.py", "model_arch/causal_iq_transformer.py", "model_arch/causal_iq_kda.py", "train_causal_iq_classifier.py"],
-      "implementation_notes": "Add DropPath module to shared.py: if training, generate Bernoulli mask of shape (B,1,...), scale by 1/keep_prob. Add drop_path_rate: float = 0.0 to BaseCausalIQConfig. In each backbone __init__, compute dp_rates = torch.linspace(0, drop_path_rate, depth).tolist() and pass dp_rates[i] to each block. Add drop_path = DropPath(drop_path_prob) to each block; apply as: x = x + drop_path(drop(attn(norm(x)))). Expose --drop_path_rate CLI flag.",
-      "effort": "low",
-      "estimated_impact": "medium-high",
-      "priority": 3
+      "implementation_notes": "Scope limited to GatedDeltaNet only \u2014 DO NOT touch causal_iq_transformer.py or causal_iq_kda.py. Add DropPath(nn.Module) to shared.py: during training sample Bernoulli mask (B,1,1), scale residual by 1/keep_prob. Add drop_path_rate: float = 0.0 to BaseCausalIQConfig. In CausalIQGatedDeltaNetBackbone.__init__(), compute dp_rates = torch.linspace(0, drop_path_rate, depth).tolist() and pass dp_rates[i] to each GatedDeltaNetBlock. In GatedDeltaNetBlock, add self.drop_path = DropPath(drop_path_prob) and apply: x = x + self.drop_path(self.ff_norm(...)) pattern. Expose --drop_path_rate float CLI flag (default 0.0). Try 0.1 as starting value.",
+      "files_to_modify": [
+        "model_arch/shared.py",
+        "model_arch/causal_iq_gateddeltanet.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium-high",
+      "hypothesis": "The baseline uses weight_decay=0.0 meaning there is NO explicit regularization whatsoever. Stochastic depth provides strong implicit regularization and acts as an ensemble over sub-networks at zero inference cost.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "B4",
-      "category": "Architecture",
       "title": "Local Depthwise-Conv Mixer Before GDN Attention",
-      "description": "Insert a depthwise conv1d (kernel=7, groups=dim) applied along the token dimension in each GDN block, before the GatedDeltaNet attention layer.",
-      "motivation": "Causal conv patch embed with stride=64 means adjacent tokens are ~64 samples apart. A local mixer lets the model aggregate across a few adjacent tokens before global linear attention, adding spatial locality inductive bias similar to LocalMamba / MambaVision.",
-      "files_to_change": ["model_arch/causal_iq_gateddeltanet.py"],
       "implementation_notes": "Add LocalMixer(nn.Module) with a causal depthwise Conv1d(dim, dim, kernel_size=7, groups=dim, padding=0) + left-pad of (kernel_size-1). Insert before attn_norm in GatedDeltaNetBlock. Guard with use_local_mix: bool = False in CausalIQGatedDeltaNetConfig. Expose --use_local_mix CLI flag.",
-      "effort": "medium",
-      "estimated_impact": "medium",
-      "priority": 7
+      "files_to_modify": [
+        "model_arch/causal_iq_gateddeltanet.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "Causal conv patch embed with stride=64 means adjacent tokens are ~64 samples apart. A local mixer lets the model aggregate across a few adjacent tokens before global linear attention, adding spatial locality inductive bias similar to LocalMamba / MambaVision.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "B5",
-      "category": "Architecture",
       "title": "Expand_v Tuning for GatedDeltaNet",
-      "description": "Increase expand_v from 2.0 to 3.0 or 4.0, with num_v_heads adjusted accordingly. This increases value projection capacity.",
-      "motivation": "In GDN the value projection is the primary representation bottleneck for storing per-position information in the delta-rule memory matrix. Expanding it gives more expressive state storage at relatively low FLOP cost compared to increasing dim.",
-      "files_to_change": ["train_causal_iq_classifier.py"],
       "implementation_notes": "Expose --expand_v float (default 2.0) and --num_v_heads int (default None) CLI args. Pass through to CausalIQGatedDeltaNetConfig. Config-only change, no new code needed.",
-      "effort": "very_low",
-      "estimated_impact": "low-medium",
-      "priority": 13
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "low-medium",
+      "hypothesis": "In GDN the value projection is the primary representation bottleneck for storing per-position information in the delta-rule memory matrix. Expanding it gives more expressive state storage at relatively low FLOP cost compared to increasing dim.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "B6",
-      "category": "Architecture",
       "title": "Mamba-2 Backbone",
-      "description": "Implement a Mamba-2 (SSD, Structured State Space Duality) backbone as an alternative to GatedDeltaNet, using flash-linear-attention.",
-      "motivation": "GDN uses a delta-rule linear attention inductive bias. Mamba-2 uses a different inductive bias (selective state space with input-dependent state transitions) that may model the temporal structure of IQ bursts differently and potentially better.",
-      "files_to_change": ["model_arch/causal_iq_mamba2.py (new)", "train_causal_iq_classifier.py"],
       "implementation_notes": "Create model_arch/causal_iq_mamba2.py following the same pattern as causal_iq_gateddeltanet.py. Use fla.layers.mamba2 or equivalent from flash-linear-attention. Add mamba2 to --arch choices. CausalIQMamba2Config extending BaseCausalIQConfig.",
-      "effort": "high",
-      "estimated_impact": "unknown",
-      "priority": 15
+      "files_to_modify": [
+        "model_arch/causal_iq_mamba2.py (new)",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "unknown",
+      "hypothesis": "GDN uses a delta-rule linear attention inductive bias. Mamba-2 uses a different inductive bias (selective state space with input-dependent state transitions) that may model the temporal structure of IQ bursts differently and potentially better.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "C1",
-      "category": "Data Augmentation",
       "title": "IQ Imbalance Augmentation",
-      "description": "Simulate receiver hardware IQ imbalance: amplitude imbalance alpha~U(0.95,1.05) and phase imbalance phi~U(-5deg,+5deg). Apply as: I_out=I, Q_out=alpha*(I*sin(phi)+Q*cos(phi)).",
-      "motivation": "IQ imbalance is a real artifact in SDR receivers. Without this augmentation the model may learn the test receiver's own imbalance signature rather than the transmitter fingerprint, causing brittleness when testing on a different receiver or measurement setup.",
-      "files_to_change": ["utils/gpu_aug_iq.py"],
       "implementation_notes": "Add apply_iq_imbalance(self, iq_complex, batch_size, device) method to GPUAugmentor. alpha = rand(B,1)*0.1+0.95; phi = (rand(B,1)*2-1)*(5*pi/180). I_out=real(iq_complex); Q_out=alpha*(I_out*sin(phi)+imag(iq_complex)*cos(phi)). Return torch.complex(I_out, Q_out). Call after apply_cfo in forward().",
-      "effort": "low",
-      "estimated_impact": "high",
-      "priority": 1
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py"
+      ],
+      "expected_impact": "high",
+      "hypothesis": "IQ imbalance is a real artifact in SDR receivers. Without this augmentation the model may learn the test receiver's own imbalance signature rather than the transmitter fingerprint, causing brittleness when testing on a different receiver or measurement setup.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "C2",
-      "category": "Data Augmentation",
       "title": "Phase Noise Augmentation",
-      "description": "Add multiplicative oscillator phase noise via a GPU Wiener process: theta[t]=theta[t-1]+N(0,sigma^2), x_out[t]=x[t]*exp(j*theta[t]). Use sigma=1e-3 rad/sample.",
-      "motivation": "Oscillator phase noise is one of the most device-specific RF impairments, tied to crystal quality and PLL design. Adding random phase noise trains the model to be invariant to channel-induced phase noise while remaining sensitive to the device-specific signature.",
-      "files_to_change": ["utils/gpu_aug_iq.py"],
       "implementation_notes": "Add apply_phase_noise(self, iq_complex, batch_size, seq_len, device) to GPUAugmentor. sigma=1e-3. increments = torch.randn(B, L, device=device)*sigma. theta = torch.cumsum(increments, dim=1). pn_rot = torch.complex(cos(theta), sin(theta)). Return iq_complex * pn_rot. Call in forward() after IQ imbalance.",
-      "effort": "low",
-      "estimated_impact": "medium",
-      "priority": 6
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "Oscillator phase noise is one of the most device-specific RF impairments, tied to crystal quality and PLL design. Adding random phase noise trains the model to be invariant to channel-induced phase noise while remaining sensitive to the device-specific signature.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "C3",
-      "category": "Data Augmentation",
       "title": "Mixup on IQ Signals",
-      "description": "Standard input Mixup: x_mix=lambda*x_i+(1-lambda)*x_j, y_mix=lambda*y_i+(1-lambda)*y_j, where lambda~Beta(alpha, alpha). Add --mixup_alpha flag (0=disabled, 0.4 recommended).",
-      "motivation": "Baseline uses weight_decay=0.0 meaning no explicit regularization. Mixup creates virtual training examples that smooth the decision boundary, acting as a soft regularizer without any HP tuning and typically gains +0.5-2% accuracy.",
-      "files_to_change": ["train_causal_iq_classifier.py"],
       "implementation_notes": "Add --mixup_alpha float (default 0.0) CLI flag. In training loop after loading batch: if mixup_alpha>0, sample lam~Beta(mixup_alpha,mixup_alpha), rand_idx=randperm(B), x_mix=lam*x+(1-lam)*x[rand_idx], compute mixed CE loss as lam*CE(logits,y)+(1-lam)*CE(logits,y[rand_idx]). No changes to model code.",
-      "effort": "very_low",
-      "estimated_impact": "medium",
-      "priority": 4
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "Baseline uses weight_decay=0.0 meaning no explicit regularization. Mixup creates virtual training examples that smooth the decision boundary, acting as a soft regularizer without any HP tuning and typically gains +0.5-2% accuracy.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "C4",
-      "category": "Data Augmentation",
       "title": "Curriculum Learning (SNR Schedule)",
-      "description": "Start training with a clean SNR range [25,40]dB for epochs 1-200, then ramp to the full hard range [10,40]dB for epochs 201-600.",
-      "motivation": "Introducing very heavy noise too early may cause the model to learn noise-filtering heuristics rather than device fingerprint features. Starting clean helps build a good feature extractor first, then hardening it to noise generalizes better.",
-      "files_to_change": ["utils/gpu_aug_iq.py", "train_causal_iq_classifier.py"],
       "implementation_notes": "Add snr_min: float parameter to GPUAugmentor (default 10.0). In training loop, call augmentor.set_snr_min(25.0) for epochs<200 and augmentor.set_snr_min(10.0) for epochs>=200. Alternatively pass epoch to augmentor.forward().",
-      "effort": "low",
-      "estimated_impact": "medium",
-      "priority": 10
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "Introducing very heavy noise too early may cause the model to learn noise-filtering heuristics rather than device fingerprint features. Starting clean helps build a good feature extractor first, then hardening it to noise generalizes better.",
+      "status": "done",
+      "source": "LLM"
     },
     {
       "id": "C5",
-      "category": "Data Augmentation",
       "title": "Random Temporal Crop / Burst Offset",
-      "description": "Randomly crop a contiguous window of length L'~U(4096,8192) from the 8192-sample sequence and zero-pad back to 8192. Also apply a random burst start offset of +-256 samples via circular shift.",
-      "motivation": "In real captures the burst start position within the recorded window varies. Training with fixed-aligned sequences may cause the model to rely on absolute token position rather than signal content, reducing robustness at deployment.",
-      "files_to_change": ["utils/gpu_aug_iq.py"],
       "implementation_notes": "Add to GPUAugmentor.forward(): crop_len = randint(4096, 8192+1). start = randint(0, 8192-crop_len+1). x_crop = x[:,:,start:start+crop_len]. x_out = F.pad(x_crop, (0, 8192-crop_len)). Apply before channel augmentation steps.",
-      "effort": "low",
-      "estimated_impact": "low-medium",
-      "priority": 12
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py"
+      ],
+      "expected_impact": "low-medium",
+      "hypothesis": "In real captures the burst start position within the recorded window varies. Training with fixed-aligned sequences may cause the model to rely on absolute token position rather than signal content, reducing robustness at deployment.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "D1",
+      "title": "Label Smoothing",
+      "implementation_notes": "Change criterion = nn.CrossEntropyLoss() to criterion = nn.CrossEntropyLoss(label_smoothing=0.05) in train_causal_iq_classifier.py. Add --label_smoothing float (default 0.0) CLI flag and pass to CrossEntropyLoss. No model changes needed.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "The model has no regularization (dropout=0, weight_decay=0). Label smoothing with epsilon=0.05 prevents the model from becoming overconfident on training labels, reducing overfitting to augmentation artifacts without penalizing weights. Typically gives +0.5-1% on classification tasks.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "D2",
+      "title": "Deeper Model (depth=6)",
+      "implementation_notes": "Change baseline --depth from 4 to 6. Config-only CLI change: update smoke_test_command_template and full_train_command_template to use --depth 6. No code changes needed.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "The baseline uses depth=4. GDN blocks are cheap (linear in sequence length). Adding 2 more blocks gives the model more capacity to hierarchically compose patch-level features into device-level fingerprints, which may be needed for the 10-class LocD task.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "D3",
+      "title": "Cosine LR Schedule with Warmup",
+      "implementation_notes": "Add --lr_schedule str (default 'plateau') CLI flag with choices ['plateau', 'cosine']. When cosine: use torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6) with 10-epoch linear warmup (scale lr by epoch/10 for first 10 epochs). Replace lr_scheduler step in training loop. No model changes.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "The baseline uses ReduceLROnPlateau which reactively decays when val_loss stagnates. A cosine schedule proactively anneals LR, preventing the optimizer from getting stuck in sharp minima early in training. Cosine decay is well-established to improve final accuracy on classification tasks.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "D4",
+      "title": "Finer Patch Stride (stride=16)",
+      "implementation_notes": "Change --patch_stride from 32 to 16 in the command templates. With patch_size=64 and stride=16, overlap is 75% giving 512 tokens vs 257 with stride=32. This is a config-only change via CLI. No code modifications needed.",
+      "files_to_modify": [],
+      "expected_impact": "medium",
+      "hypothesis": "Higher token overlap means the model sees more granular temporal context at each position. The 75% overlap (stride=16, kernel=64) produces 512 tokens \u2014 richer coverage of burst transitions and startup transients that carry device identity. The sequence length matches typical ViT-style high-overlap setups.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "D5",
+      "title": "Attention Pooling",
+      "implementation_notes": "Change --pooling from 'last' to 'attn' in the command templates. The attn pooling already exists in BaseCausalIQBackbone.pool(): learns a scalar weight per token and computes weighted mean. Config-only CLI change, no code modifications needed.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "hypothesis": "The baseline --pooling last only uses the final token for classification, which may miss discriminative information in earlier tokens (e.g. burst startup transients in the first few hundred samples). Attention pooling learns to weight all tokens, potentially focusing on the most device-discriminative regions.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "E2",
+      "title": "OneCycleLR Schedule",
+      "implementation_notes": "Add --lr_schedule str (default 'plateau') CLI flag with choices ['plateau', 'cosine', 'onecycle'] to train_causal_iq_classifier.py. When 'onecycle': use torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=3e-3, total_steps=args.epochs, pct_start=0.1, anneal_strategy='cos', final_div_factor=1e4). max_lr is 10x the base lr (3e-4 * 10 = 3e-3). Call scheduler.step() once per epoch instead of lr_scheduler(val_loss). No model code changes.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "high",
+      "hypothesis": "ReduceLROnPlateau is reactive: it only decays when val_loss stagnates, causing long flat regions. The 82-84% baseline instability suggests the optimizer is getting stuck in sharp minima. OneCycleLR uses a warm-up + cosine decay cycle that enables super-convergence \u2014 it has been shown to reach higher final accuracy faster than plateau-based schedules on classification tasks.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "E3",
+      "title": "Learned Positional Embeddings",
+      "implementation_notes": "In BaseCausalIQBackbone.__init__() in shared.py, add self.pos_embed = nn.Parameter(torch.zeros(1, max_seq_len, dim)) and nn.init.trunc_normal_(self.pos_embed, std=0.02). In BaseCausalIQBackbone.patch(), after computing x (B, T, dim), add: x = x + self.pos_embed[:, :T, :]. Add use_pos_embed: bool = False to BaseCausalIQConfig. Expose --use_pos_embed CLI flag. Set max_seq_len=1024 (covers stride=16 case with 512 tokens). Positional embedding is only applied within the GatedDeltaNet path (gated deltanet backbone only).",
+      "files_to_modify": [
+        "model_arch/shared.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "The GDN is a causal sequence model but has no explicit positional signal \u2014 relative position is only implicit in the causal masking. Burst startup transients (early tokens) carry different device fingerprint information from steady-state (late tokens). Explicit positional embeddings allow the model to specialize its representation by burst phase, potentially improving discrimination.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "E4",
+      "title": "expand_v=3.0 (Conservative B5 Revisit)",
+      "implementation_notes": "Expose --expand_v float CLI arg (default 2.0) in train_causal_iq_classifier.py and pass to CausalIQGatedDeltaNetConfig. Use expand_v=3.0 (not 4.0 which was too slow). B5 tried expand_v=4.0 \u2192 12.16s/epoch (over 10s threshold). expand_v=3.0 scales memory matrix by 50% vs 4.0, expected ~8-9s/epoch. Config-only change \u2014 the --expand_v flag may already exist in code from B5; if so just use expand_v=3.0 in the command.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "B5 showed expand_v=4.0 exceeded the speed threshold. expand_v=3.0 is a 50% larger value matrix than baseline (2.0) without excessive overhead. A larger value projection gives the GDN memory matrix more expressive capacity for storing per-position device fingerprint state, potentially improving recall of discriminative features.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "E5",
+      "title": "Focal Loss for Hard Device Pairs",
+      "implementation_notes": "Add FocalLoss(nn.Module) class to train_causal_iq_classifier.py: FL(pt) = -alpha_t * (1-pt)^gamma * log(pt). Use gamma=2, alpha=1 (no class weighting). Compute: logpt = F.log_softmax(logits, dim=1); pt = logpt.exp().gather(1, y.view(-1,1)).squeeze(); loss = -((1-pt)**2 * logpt.gather(1, y.view(-1,1)).squeeze()).mean(). Add --focal_loss flag (store_true) and --focal_gamma float (default 2.0) CLI args. When --focal_loss is set, use FocalLoss instead of CrossEntropyLoss. Compatible with existing label_smoothing.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "Standard cross-entropy weights all device pairs equally. In the 10-class LocD problem, some transmitter pairs likely share similar hardware impairments and are harder to distinguish. Focal loss down-weights the contribution of easy-to-classify examples and focuses learning on hard pairs, potentially improving accuracy on the confusable subset that prevents exceeding 84%.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F1",
+      "title": "Circular Temporal Roll (Fixed C5)",
+      "implementation_notes": "In gpu_aug_iq.py GPUAugmentor.forward(), replace the zero-pad crop block with per-sample circular roll: for each sample in batch, sample shift_i ~ U[-L//4, L//4] and apply torch.roll(iq_batch[i], shift_i, dims=-1). This can be vectorised: shifts = torch.randint(-L//4, L//4+1, (B,)), then use a batched gather-based roll or loop. Add --temporal_roll flag (store_true) to enable. Remove the existing zero-pad crop code block (the C5 code) when this flag is used.",
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "C5 (zero-pad crop) regressed by -15pp because zero-padding creates a hard boundary artifact \u2014 the model learned to detect the padding discontinuity. Circular roll avoids this: the signal wraps continuously so no artificial boundary exists. Position invariance is still taught, but without a confounding artefact. This is used in RFFI literature to simulate burst timing uncertainty.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F2",
+      "title": "Gain/Power Jitter Augmentation",
+      "implementation_notes": "In gpu_aug_iq.py, add apply_gain_jitter(self, iq_complex, batch_size, device) method: g = torch.exp(torch.randn(batch_size, 1, device=device) * 0.15) \u2014 LogNormal(0, 0.15) gives g in roughly [0.74, 1.35]. Return iq_complex * g. Call in forward() AFTER AWGN (so noise level scales with signal). Add --gain_jitter flag to CLI (store_true).",
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "AGC (automatic gain control) at the receiver has finite precision and varies across captures. The device PA nonlinearity fingerprint is encoded in the SHAPE of amplitude distortion (compression curve), not absolute signal level. Random gain scaling teaches the model this invariance while leaving the relative amplitude patterns intact. Very cheap: one scalar multiply per sample.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F3",
+      "title": "Constant Phase Rotation Augmentation",
+      "implementation_notes": "In gpu_aug_iq.py, add apply_const_phase_rot(self, iq_complex, batch_size, device): phi = torch.rand(batch_size, 1, device=device) * 2 * math.pi; rot = torch.complex(torch.cos(phi), torch.sin(phi)); return iq_complex * rot. Call in forward() BEFORE CFO (so phase reference is set before frequency ramp is applied). Add --const_phase_rot flag to CLI (store_true). This is distinct from CFO: it is a single constant rotation per burst, not a frequency ramp.",
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium-high",
+      "hypothesis": "The receiver local oscillator has a random phase reference at burst acquisition time, giving each capture a different absolute phase. Device fingerprints (phase noise trajectory, IQ imbalance ratio) are defined relative to this random reference \u2014 they are INVARIANT to a global constant phase rotation. Training without this augmentation allows the model to learn absolute phase as a spurious cue that will not generalise across captures. CFO only adds a frequency ramp on top; it does not randomise the initial phase reference.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F4",
+      "title": "Ablate Phase Noise from Augmentation Pipeline",
+      "implementation_notes": "SKIPPED: method does not exist in gpu_aug_iq.py forward() - this is a NO-OP. Verified 2026-02-19.",
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "high",
+      "hypothesis": "C2 confirmed that phase noise augmentation destroyed -5.7pp accuracy. Yet apply_phase_noise is STILL in the current pipeline (committed to main after C2 experiment). If the 84% baseline was established WITHOUT phase noise and the current main branch includes it, training D1+ experiments with phase noise active may be suppressing accuracy. Removing it could recover lost accuracy. This is the highest-priority diagnostic experiment.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F5",
+      "title": "Ablate IQ Imbalance from Augmentation Pipeline",
+      "implementation_notes": "SKIPPED: method does not exist in gpu_aug_iq.py forward() - this is a NO-OP. Verified 2026-02-19.",
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "high",
+      "hypothesis": "C1 showed IQ imbalance augmentation caused -3.1pp regression. Like phase noise, apply_iq_imbalance is committed to main. IQ imbalance is a DEVICE-SPECIFIC fingerprint (tied to the transmitter's mixer hardware), not a channel effect \u2014 augmenting it teaches invariance to a discriminative cue. Removing it from the pipeline should improve accuracy by letting the model use IQ imbalance as an identity feature.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F6",
+      "title": "Patch Token Dropout (Model-side Augmentation)",
+      "implementation_notes": "In causal_iq_gateddeltanet.py CausalIQGatedDeltaNetBackbone, after patch embedding x = self.patch(input) in forward(), apply token dropout during training: if self.training and self.token_drop_rate > 0: mask = torch.bernoulli(torch.full((B, T, 1), 1.0 - self.token_drop_rate, device=x.device)); x = x * mask. Add token_drop_rate: float = 0.0 to CausalIQGatedDeltaNetConfig. Expose --token_drop_rate float CLI arg (default 0.0). Try 0.05 (5% of tokens zeroed). Different from stochastic depth (B3): this zeros input tokens, not residual connections.",
+      "files_to_modify": [
+        "model_arch/causal_iq_gateddeltanet.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "hypothesis": "Randomly dropping 5% of patch tokens forces the GDN to classify from an incomplete view of the burst, acting as a strong regulariser without corrupting the underlying IQ signal statistics. Unlike signal-level augmentations that risk destroying device fingerprints, token dropout operates in embedding space after the fingerprint features have been extracted by the patch convolution. Similar to PatchDropout in ViT which improves accuracy and robustness.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "F7",
+      "title": "Clean Augmentation Baseline (Disable All Harmful Steps)",
+      "implementation_notes": "Run with both --no_phase_noise and --no_iq_imbalance flags together (combining F4 + F5). Also remove the C5 temporal crop block from gpu_aug_iq.py (or add --no_temporal_crop flag). The goal is to return to a cleaner augmentation pipeline: Jakes fading + CFO + AWGN only, matching the conditions under which the 84% baseline was originally established. This is a diagnostic run to determine whether the accumulated harmful augmentations in main are the root cause of training instability.",
+      "files_to_modify": [
+        "utils/gpu_aug_iq.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "high",
+      "hypothesis": "The 84% SOTA was established on a codebase WITHOUT phase noise, IQ imbalance, and temporal crop augmentations. All three were added to main after failed experiments. If these are now active during training by default, every subsequent experiment (D1, D2, etc.) is being trained with augmentations that individually caused -3 to -6pp regressions. Stripping them all back to the original clean pipeline may recover to true 84% and provide a stable foundation for further improvements.",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "G1",
+      "title": "Auxiliary Intermediate Classification Head",
+      "hypothesis": "Standard cross-entropy only provides gradient from the final layer. Adding a shallow classification head at the midpoint of the GDN stack (after depth//2 blocks) creates a second gradient path that regularizes intermediate representations. Auxiliary loss encourages layer-wise feature quality \u2014 a common technique in deeply supervised networks (GoogLeNet, FPNet) that consistently improves final accuracy.",
+      "implementation_notes": "In CausalIQGatedDeltaNetBackbone.forward(), after processing the first depth//2 GDN blocks, extract the hidden state, apply a LayerNorm + Linear classifier (dim -> num_classes). In train_causal_iq_classifier.py, compute aux_loss = aux_weight * criterion(aux_logits, y) and add to main loss: total_loss = loss + aux_loss. Add --aux_loss flag (store_true) and --aux_weight float (default 0.3) CLI args. Cherry-pick E5 commit a5c9909 first (focal loss baseline).",
+      "files_to_modify": [
+        "model_arch/causal_iq_gateddeltanet.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium-high",
+      "source": "LLM",
+      "status": "done"
+    },
+    {
+      "id": "G2",
+      "title": "Focal Loss Gamma Tuning (gamma=3.0)",
+      "hypothesis": "exp_018 established that focal loss with gamma=2.0 gives 85%. The optimal gamma depends on the difficulty distribution of device pairs \u2014 gamma=2 is the standard starting point but may not be optimal. gamma=3 further down-weights easy examples, forcing the model to focus harder on confusable device pairs. Given the 10-class LocD problem likely has a few very hard pairs driving the accuracy ceiling, higher gamma may help.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 onto a new branch (focal_loss code). Then change --focal_gamma from 2.0 to 3.0 in the training command only (no code changes needed). The FocalLoss class already accepts --focal_gamma CLI arg. Smoke test will use gamma=3.0 as well.",
+      "files_to_modify": [],
+      "expected_impact": "medium",
+      "source": "LLM",
+      "status": "done"
+    },
+    {
+      "id": "G3",
+      "title": "STFT Patch Embedding (frequency domain)",
+      "hypothesis": "The baseline uses causal_conv patch embedding operating in time domain. STFT-based patch embedding converts each patch into a frequency-domain representation, exposing spectral leakage, subcarrier power imbalance, and harmonic distortion fingerprints that are invisible in raw I/Q. The STFTPatchEmbed1D class already exists in shared.py \u2014 this is a config-only change via --patch_embed_type stft.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 (focal loss) first. Then change --patch_embed_type from causal_conv to stft in the training command. No code changes needed \u2014 STFTPatchEmbed1D already exists in model_arch/shared.py. The stft embed produces freq-domain tokens of the same dim. Keep all other params identical.",
+      "files_to_modify": [],
+      "expected_impact": "medium",
+      "source": "LLM",
+      "status": "done"
+    },
+    {
+      "id": "G4",
+      "title": "Focal Loss gamma=1.5 (softer focus)",
+      "hypothesis": "gamma=2 may over-suppress easy examples in early training, slowing convergence. gamma=1.5 is a softer compromise: it still focuses on hard examples more than CE but allows easier examples to contribute more to gradient updates. This may produce better-calibrated training dynamics compared to the sharper gamma=2.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 onto new branch. Change --focal_gamma to 1.5 in training command only. No code changes needed.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "source": "LLM",
+      "status": "done"
+    },
+    {
+      "id": "G5",
+      "title": "Larger Model dim=768",
+      "hypothesis": "The baseline uses dim=512. If model capacity is the bottleneck for distinguishing hard device pairs, increasing to dim=768 gives the GDN 50% more representational width. With focal loss now providing better gradient signal on hard examples, more model capacity may directly translate to accuracy gains. Unlike depth increases (D2 hurt at 82.7%), width increases maintain the same depth=4 temporal structure.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 (focal loss). Change --dim from 512 to 768 in training command. No code changes needed. Check smoke test timing is under 10s/epoch \u2014 wider model increases compute. If too slow, reject.",
+      "files_to_modify": [],
+      "expected_impact": "medium",
+      "source": "LLM",
+      "status": "done"
+    },
+    {
+      "id": "H1",
+      "title": "Allow Negative Eigenvalues in GDN (allow_neg_eigval=True)",
+      "hypothesis": "The GDN delta-rule memory update has an option allow_neg_eigval=False by default, which constrains the eigenvalues of the memory matrix update to be non-negative. Allowing negative eigenvalues (allow_neg_eigval=True) makes the delta rule update more expressive, as it can represent a broader class of corrections to the memory matrix including inhibitory updates. This could improve the model ability to contrast device pairs that share similar impairment profiles.",
+      "implementation_notes": "In CausalIQGatedDeltaNetConfig, add/modify allow_neg_eigval: bool = False. In CausalIQGatedDeltaNet.__init__(), pass allow_neg_eigval=True when constructing GatedDeltaNetBlocks. Expose --allow_neg_eigval flag (store_true) to train_causal_iq_classifier.py. Cherry-pick E5 commit a5c9909 first (focal loss baseline). This is a single boolean config change with zero compute overhead.",
+      "files_to_modify": [
+        "model_arch/causal_iq_gateddeltanet.py",
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "H2",
+      "title": "Larger Head Dimension (head_dim=128, num_heads=2)",
+      "hypothesis": "The baseline uses head_dim=64, num_heads=4 (total QK dim = 256). Larger heads (head_dim=128, num_heads=2) means each head has 2x more capacity to attend to device-discriminative features in the delta-rule memory matrix. Device fingerprints like PA nonlinearity and phase noise are complex multi-dimensional patterns; larger heads may better capture the full covariance of these patterns without being split across multiple smaller heads.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 (focal loss). Add --head_dim int (default 64) and optionally override --num_heads to match. Change --head_dim to 128 and --num_heads to 2 in training command. Note: num_heads * head_dim = 2 * 128 = 256 total QK dim (same as baseline). This is purely a config change, no code modifications needed. Smoke test to verify speed is unchanged.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "H3",
+      "title": "Wider Short Convolution in GDN (conv_size=8)",
+      "hypothesis": "The GDN uses a short causal convolution (conv_size=4) before the delta-rule attention mechanism. This local conv captures token-level temporal patterns before global linear attention. Increasing conv_size from 4 to 8 doubles the local context window, allowing the model to see 8 adjacent patch tokens when computing delta-rule keys/queries. Given patch_size=64 and stride=32, conv_size=8 covers 8 * 32 = 256 raw samples of local context, capturing more burst structure.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 (focal loss). Add --conv_size int (default 4) CLI arg to train_causal_iq_classifier.py and pass through to CausalIQGatedDeltaNetConfig and GatedDeltaNetBlock. Change --conv_size to 8 in training command. This affects the conv_size parameter in GatedDeltaNet which is already supported by the fla library. Smoke test to verify speed is within threshold.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "H4",
+      "title": "Test-Time Augmentation (TTA)",
+      "hypothesis": "The model is currently evaluated with a single forward pass per sample. Device fingerprint classification under CFO and noise is inherently stochastic. Averaging predictions over N augmented versions of each test sample (with different random CFO offsets and noise realizations) should reduce prediction variance and improve accuracy, especially for hard device pairs near the decision boundary. TTA is augmentation-free at training time and requires no model changes.",
+      "implementation_notes": "Modify test_causal_iq_classifier.py to add --tta_n int (default 1) flag. When tta_n > 1, for each test batch, run N forward passes applying random CFO augmentation (same as training: \u00b1200 Hz) and random AWGN (same SNR range: 10-30 dB) using GPUAugmentor, then average the softmax outputs before taking argmax. Use tta_n=8. This modifies only the eval script, not the model or training code.",
+      "files_to_modify": [
+        "test_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium-high",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "H5",
+      "title": "MLP Hidden Ratio Tuning (mlp_ratio=2.0)",
+      "hypothesis": "The GDN blocks use mlp_ratio=4.0 (the MLP hidden size is 4x the model dim). After 4 GDN blocks, the MLP layers contribute 50% of total parameter count. For a 10-class sequence classification task with strong inductive bias from the GDN recurrence, a smaller MLP ratio (2.0) reduces over-parameterization of the feedforward path, potentially reducing overfitting without explicit regularization. Combined with focal loss, this may improve generalization.",
+      "implementation_notes": "Cherry-pick E5 commit a5c9909 (focal loss). Add --mlp_ratio float (default 4.0) CLI arg to train_causal_iq_classifier.py and pass through to CausalIQGatedDeltaNetConfig (already has mlp_ratio field). Change --mlp_ratio to 2.0 in training command. Config-only change \u2014 no code modifications to model_arch files. Smoke test to verify timing is unchanged.",
+      "files_to_modify": [
+        "train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "low-medium",
+      "status": "done",
+      "source": "LLM"
+    },
+    {
+      "id": "I1",
+      "title": "Lower Learning Rate (lr=1e-4)",
+      "hypothesis": "The baseline uses lr=3e-4 which is a common default for Adam-family optimizers. However, with focal loss focusing training on hard device pairs, the gradient signal is already more directed. A lower lr=1e-4 may allow the optimizer to more carefully navigate the loss surface around hard pair boundaries, reducing overfitting to augmentation noise while still converging. The 82-84% training instability suggests the current lr may cause the optimizer to oscillate around sharp minima.",
+      "implementation_notes": "Cherry-pick E5 (a5c9909) + H2 (d6be500). Change --lr from 3e-4 to 1e-4 in training command only. Config-only change, no code needed. The command templates already have --lr as a configurable parameter.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "status": "done",
+      "source": "human"
+    },
+    {
+      "id": "I2",
+      "title": "Label Smoothing Increase (label_smoothing=0.1)",
+      "hypothesis": "The current baseline uses label_smoothing=0.05. Combined with focal loss (which already down-weights easy examples), a stronger label smoothing (0.1) may provide additional regularization that prevents over-confidence on training augmentations. Since the model has no weight decay or dropout, label smoothing is the only explicit output-level regularizer. Doubling it might reduce the gap between training accuracy (~99%) and test accuracy (~85%).",
+      "implementation_notes": "Cherry-pick E5 (a5c9909) + H2 (d6be500). Change --label_smoothing from 0.05 to 0.1 in training command. Config-only change. Note: FocalLoss and CrossEntropyLoss both accept label_smoothing.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "status": "done",
+      "source": "human"
+    },
+    {
+      "id": "I3",
+      "title": "Smaller Patch Size (patch_size=32, stride=16)",
+      "hypothesis": "The current baseline uses patch_size=64, stride=32, giving ~256 tokens of length 64. A smaller patch_size=32 with stride=16 gives ~512 tokens of length 32 \u2014 twice as many tokens, each capturing finer-grained temporal features. Burst startup transients span ~32-64 samples; smaller patches may better localize these device-specific fingerprints. The GDN recurrent state can then accumulate these fine-grained features more efficiently. Caution: more tokens = more compute; check smoke test timing.",
+      "implementation_notes": "Cherry-pick E5 (a5c9909) + H2 (d6be500). Change --patch_size 64 to --patch_size 32 and --patch_stride 32 to --patch_stride 16 in training command. Config-only change. Smoke test critical \u2014 2x tokens may push past 10s/epoch threshold.",
+      "files_to_modify": [],
+      "expected_impact": "medium",
+      "status": "done",
+      "source": "human"
+    },
+    {
+      "id": "I4",
+      "title": "expand_v=1.5 (Smaller Value Projection)",
+      "hypothesis": "The baseline uses expand_v=2.0 (value matrix is 2x dim). E4 tried expand_v=3.0 which was too slow. The opposite direction \u2014 expand_v=1.5 \u2014 reduces the value matrix size by 25%. For this task where the recurrent state encodes device fingerprint identity, a smaller value matrix may be sufficient while reducing parameter count and potentially improving generalization. Lower expand_v = smaller GDN memory matrix = potentially faster.",
+      "implementation_notes": "Cherry-pick E5 (a5c9909) + H2 (d6be500). Add --expand_v 1.5 to training command. The --expand_v CLI arg already exists from B5 experiment. Config-only change. Expect smoke test to be faster than baseline (5.7s/epoch) since smaller value matrix.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "status": "done",
+      "source": "human"
+    },
+    {
+      "id": "I5",
+      "title": "Gradient Clipping Reduction (grad_norm=0.5)",
+      "hypothesis": "The baseline uses grad_norm=1.0 for gradient clipping. With focal loss focusing gradient signal on hard examples, the gradient magnitude for hard pairs may be larger. Reducing grad_norm from 1.0 to 0.5 provides tighter clipping, which can stabilize training when gradients are more focused and potentially reduce the training instability (82-84% variance) observed across runs. Tighter clipping acts as an implicit learning rate reduction for large gradient steps.",
+      "implementation_notes": "Cherry-pick E5 (a5c9909) + H2 (d6be500). Change --grad_norm from 1.0 to 0.5 in training command. The --grad_norm CLI arg already exists. Config-only change.",
+      "files_to_modify": [],
+      "expected_impact": "low-medium",
+      "status": "done",
+      "source": "human"
+    },
+    {
+      "id": "J1",
+      "title": "Muon Optimizer for GDN Block Weights",
+      "hypothesis": "The Muon optimizer applies Nesterov momentum with Newton-Schulz orthogonalization to 2D block weight matrices, which can find flatter optima than AdamW for recurrent state-space layers. Using Muon for GDN block weights (Q/K/V/A/B/O projections, MLP) while keeping AdamW for embeddings and norms may improve generalization.",
+      "implementation_notes": "No architecture code changes needed. Just add --optimizer muon to the training command. The split_muon_params function and Muon optimizer are already implemented in train_causal_iq_classifier.py. Also need --muon_lr 1e-2 --muon_weight_decay 0.0 (per constraint: weight_decay=0). The --weight_decay 0.0 flag applies to AdamW only.",
+      "files_to_modify": [],
+      "expected_impact": "high",
+      "status": "done",
+      "source": "manual: Muon optimizer already in codebase, never tried"
+    },
+    {
+      "id": "J2",
+      "title": "Conv Bias in GDN Short Causal Conv (conv_bias=True)",
+      "hypothesis": "Enabling a learnable bias in the short causal convolution inside each GDN block may improve the model capacity to detect the startup transient offset patterns that distinguish devices. Currently conv_bias=False which prevents the model from learning channel-wise offset corrections.",
+      "implementation_notes": "Add --conv_bias flag to train_causal_iq_classifier.py and pass to CausalIQGatedDeltaNetConfig. The GatedDeltaNetBlock already accepts conv_bias parameter. Minimal change: 1 line in arg parser + 1 line in cfg construction.",
+      "files_to_modify": [
+        "experiment_project/train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "status": "done",
+      "source": "manual: conv_bias=False is default but bias could help startup transient detection"
+    },
+    {
+      "id": "J3",
+      "title": "GDN mode=fused_recurrent (Alternative Computation Path)",
+      "hypothesis": "The GDN mode=chunk splits sequences into chunks for parallel processing. The fused_recurrent mode processes tokens one by one in a memory-fused kernel, which may have different numerical properties for short sequences with burst transients. The fused path avoids chunk boundary effects that may blur transient timing information.",
+      "implementation_notes": "Add --gdn_mode argument to train_causal_iq_classifier.py, default chunk, and pass to CausalIQGatedDeltaNetConfig. Modify train script to set mode=args.gdn_mode in cfg. Check speed via smoke test - fused_recurrent may be slower.",
+      "files_to_modify": [
+        "experiment_project/train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "status": "done",
+      "source": "manual: fla.layers.gated_deltanet supports chunk and fused_recurrent modes"
+    },
+    {
+      "id": "J4",
+      "title": "Batch Size 64 (Smaller Batch Noisier Gradients)",
+      "hypothesis": "Smaller batch size (64 vs 128) introduces more stochastic gradient noise which can help the optimizer escape sharp local minima and generalize better. With focal loss downweighting easy examples, smaller batches may improve the gradient signal quality for hard device pairs as each batch has fewer easy-example dilution effects.",
+      "implementation_notes": "No code changes needed. Just change --batch_size 128 to --batch_size 64 in both smoke_test and full_train commands. May be slightly faster per step but same throughput. Need to verify smoke test stays under 10s/epoch.",
+      "files_to_modify": [],
+      "expected_impact": "low",
+      "status": "done",
+      "source": "manual: batch size effect on focal loss + GDN not yet explored"
+    },
+    {
+      "id": "J5",
+      "title": "Warmup LR Schedule (Linear Warmup + ReduceLROnPlateau)",
+      "hypothesis": "Starting training with a linear learning rate warmup (e.g., 10 epochs from lr/10 to lr) before the standard ReduceLROnPlateau schedule may stabilize early GDN state initialization and avoid early divergence that causes training instability. The focal loss creates large gradients for hard pairs early in training when the model is random.",
+      "implementation_notes": "Add --lr_warmup_epochs arg (default 0) to train_causal_iq_classifier.py. In the training loop, for epoch < warmup_epochs, scale lr linearly from lr/10 to lr. After warmup, revert to normal ReduceLROnPlateau. Modify LRScheduler or add warmup wrapper.",
+      "files_to_modify": [
+        "experiment_project/train_causal_iq_classifier.py"
+      ],
+      "expected_impact": "medium",
+      "status": "done",
+      "source": "manual: LR warmup not yet tried; focal loss may benefit from stable early training"
+    },
+    {
+      "id": "K1",
+      "title": "More Heads with Smaller Head Dim (heads=8, head_dim=64)",
+      "implementation_notes": "Change training command to use --heads 8 --head_dim 64. No code changes needed \u2014 the CLI args already exist. This changes QK factorization: 8 heads of dim 64 each vs current 4 heads of dim 128 each. Total QK dim stays 512. Tests show same per-epoch speed (~7ms per GDN forward).",
+      "files_to_modify": [],
+      "expected_impact": "medium",
+      "hypothesis": "More attention heads (8 vs 4) with smaller per-head dim (64 vs 128) provides more diverse parallel state representations. Each head learns a different fingerprint pattern with smaller receptive field in feature space. This is a fundamentally different inductive bias from H2 (4 heads, head_dim=128) and may capture complementary device-discriminative features.",
+      "status": "done",
+      "source": "manual"
     }
   ]
 }

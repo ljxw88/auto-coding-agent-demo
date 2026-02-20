@@ -1,0 +1,35 @@
+{
+  "idea_id": "E3",
+  "idea_title": "Learned Positional Embeddings",
+  "git_branch": "experiment/E3-20260219_061946",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 7.39,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.824
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.824,
+    "delta": -0.016,
+    "delta_pct": -1.905,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.824,
+    "delta": -0.026,
+    "delta_pct": -3.059,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Learned positional embeddings caused a -2.6pp regression to 82.4% (vs rolling best 85.0%). The GDN recurrent architecture already has implicit position information encoded in its causal state \u2014 adding explicit learned positional embeddings may have introduced noise that overwrote the existing positional signal. This aligns with the known pattern that the GDN causal state already summarizes temporal context adequately (similar to why --pooling last works better than attention pooling).",
+  "id": "exp_026"
+}

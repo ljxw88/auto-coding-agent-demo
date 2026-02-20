@@ -1,0 +1,39 @@
+**Step 13: Stop conditions check.**
+
+- `max_experiments` = 50, current = 42 → not reached
+- `target_metric_value` = null → n/a
+- `max_consecutive_failures` = 5; consecutive non-improvements = **5** (I1 -0.1pp, I2 -1.8pp, I3 too_slow, I4 -0.6pp — let me count precisely from exp_039)
+
+Let me verify the consecutive count:
+- exp_039 I1: regression (85.0% vs 85.1%)  
+- exp_040 I3: too_slow (rejected)  
+- exp_041 I2: regression (83.3%)  
+- exp_042 I4: regression (84.5%)  
+
+Rejections (too_slow) typically count as failures. Let me check the config definition — `max_consecutive_failures` = 5. That's 4 consecutive regressions/rejections. Before that, exp_038 H5 was also a regression (81.8%). So:
+- exp_038 H5: regression
+- exp_039 I1: regression
+- exp_040 I3: too_slow (rejected/failed)
+- exp_041 I2: regression
+- exp_042 I4: regression
+
+That's **5 consecutive failures/regressions** = exactly at the `max_consecutive_failures` threshold.
+
+---
+
+## Session Summary
+
+**Experiment exp_042: I4 — expand_v=1.5 (Smaller Value Projection)**
+
+| Field | Value |
+|-------|-------|
+| Branch | `experiment/I4-20260219_191326` |
+| Smoke test | OK (5.37s/epoch) |
+| Training | 600 epochs, 4.35s/epoch avg (faster due to smaller state) |
+| LocD accuracy | **84.5%** |
+| vs rolling best (85.1%) | **-0.6pp regression** |
+| Branch kept | No (deleted) |
+
+**Conclusion:** Reducing expand_v from 2.0 to 1.5 yields 84.5% — a -0.6pp regression vs rolling best 85.1%. The smaller GDN value matrix lacks sufficient expressiveness to represent the device fingerprint state for the 10-class LocD task. Training was faster (4.35s/epoch) confirming smaller state, but the accuracy cost outweighs the speed gain. expand_v=2.0 is confirmed optimal.
+
+**Stop condition triggered:** 5 consecutive non-improvements (H5, I1, I3-too_slow, I2, I4) = `max_consecutive_failures` reached. Only 1 pending idea remains (I5). Session ends here per CLAUDE.md §Step 13.

@@ -1,0 +1,37 @@
+{
+  "idea_id": "B4",
+  "idea_title": "Local Depthwise-Conv Mixer Before GDN Attention",
+  "git_branch": "experiment/B4-20260218_162250",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 7.01,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 70.11
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.81
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.81,
+    "delta": -0.03,
+    "delta_pct": -3.571,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.81,
+    "delta": -0.03,
+    "delta_pct": -3.571,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "The local depthwise-conv mixer hypothesis was not confirmed \u2014 accuracy dropped from 84% to 81.0% (-3.0pp). The GDN already includes an internal short convolution (use_short_conv=True, conv_size=4) for local context, making an external LocalMixer redundant. Adding an extra causal depthwise conv before attn_norm introduces conflicting inductive bias and appears to disrupt the model optimization, yielding a clear regression.",
+  "id": "exp_005"
+}

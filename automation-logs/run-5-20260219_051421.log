@@ -1,0 +1,14 @@
+---
+
+## Session Summary
+
+**Experiment exp_024: E4 — expand_v=3.0 (Conservative B5 Revisit)**
+
+- **Outcome: REJECTED (too_slow)**
+- **Smoke test: 11.76s/epoch** — exceeds 10s threshold
+- **Branch deleted**, returned to main
+- Rolling best unchanged at **85.0%**
+
+**Key finding:** `expand_v=3.0` is too slow at 11.76s/epoch. This confirms that any `expand_v > 2.0` exceeds the computational budget (B5 at expand_v=4.0 was 12.16s/epoch, E4 at 3.0 is 11.76s/epoch — essentially same cost). The value matrix scaling adds O(expand_v × dim²) memory bandwidth that cannot be optimized away with `torch.compile`.
+
+**Stop condition triggered:** 6 consecutive failures (exp_019–exp_024), exceeding `max_consecutive_failures=5`. **Human intervention needed to generate fresh ideas** before the next session can proceed.

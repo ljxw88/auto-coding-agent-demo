@@ -1,0 +1,35 @@
+{
+  "idea_id": "F7",
+  "idea_title": "Clean Augmentation Baseline (Disable All Harmful Steps)",
+  "git_branch": "experiment/F7-20260218_212727",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 9.23,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.823
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.823,
+    "delta": -0.017,
+    "delta_pct": -2.024,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.823,
+    "delta": -0.017,
+    "delta_pct": -2.024,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Removing IQ imbalance, phase noise, and temporal crop augmentations produced extreme overfitting \u2014 val_acc peaked at 99.4% during training while LocD test accuracy regressed to 82.3% (-1.7pp from baseline). Despite each augmentation individually causing val-set regressions in prior experiments, they appear to provide crucial domain generalization to the LocD test distribution. The hypothesis that accumulated harmful augmentations were suppressing accuracy is rejected \u2014 these augmentations provide necessary regularization for LocD generalization even if they negatively impact val-set accuracy during training.",
+  "id": "exp_013"
+}

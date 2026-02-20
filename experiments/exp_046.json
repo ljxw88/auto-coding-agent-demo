@@ -1,0 +1,14 @@
+{
+  "idea_id": "J3",
+  "idea_title": "GDN mode=fused_recurrent (Alternative Computation Path)",
+  "git_branch": "experiment/J3-20260219_225253",
+  "outcome": "failed",
+  "smoke_test": {
+    "status": "failed",
+    "message": "Training failed: fla.layers.GatedDeltaNet asserts mode==chunk during training; fused_recurrent mode only supported for inference, not training"
+  },
+  "metrics": null,
+  "branch_kept": false,
+  "conclusion": "J3 failed at smoke test: the fla library GatedDeltaNet implementation asserts mode==chunk during training (line 222 of gated_deltanet.py). The fused_recurrent mode is only supported for inference/generation, not for training forward passes. This idea is architecturally infeasible with the current fla library version \u2014 no workaround without patching the fla library source. AVOID: do not retry fused_recurrent mode with training.",
+  "id": "exp_046"
+}

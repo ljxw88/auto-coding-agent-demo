@@ -1,0 +1,17 @@
+---
+
+**Session complete.** Here's the summary:
+
+## Session Summary — exp_022 (D4: Finer Patch Stride stride=16)
+
+**Idea selected:** D4 — Finer Patch Stride (stride=16), expected_impact: medium
+
+**Hypothesis:** stride=16 with patch_size=64 produces 512 overlapping tokens (75% overlap) vs 257 at stride=32, providing richer temporal coverage for device fingerprinting.
+
+**Result: REJECTED — too_slow**
+- Smoke test: **14.83s/epoch** (threshold: 10s/epoch)
+- stride=16 nearly doubles the sequence length (512 vs 257 tokens), which is too expensive for the current setup
+
+**Conclusion:** The hypothesis was untestable within compute budget. stride=16 produces 2× the token count of the baseline, causing ~1.5× slowdown per epoch. Future finer-stride experiments would require reducing `dim` or `depth` to compensate, or using a different sub-quadratic attention backend. The baseline stride=32 remains the practical operating point.
+
+**Next session should try:** E4 (expand_v=3.0), E3 (Learned Positional Embeddings), or F6 (Patch Token Dropout) — all medium expected_impact code changes that should be within the compute budget.

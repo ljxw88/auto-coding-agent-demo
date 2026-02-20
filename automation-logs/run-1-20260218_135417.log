@@ -1,0 +1,1 @@
+The background task output confirms what was already captured inline — training completed successfully with status `ok`, 600 epochs, 1740s total (~2.9s/epoch). This matches the result already used in the session. No new information; the session is complete as summarized.

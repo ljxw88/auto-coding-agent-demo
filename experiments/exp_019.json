@@ -1,0 +1,35 @@
+{
+  "idea_id": "D2",
+  "idea_title": "Deeper Model (depth=6)",
+  "git_branch": "experiment/D2-20260219_014446",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 8.42,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.827
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.827,
+    "delta": -0.013,
+    "delta_pct": -1.548,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.827,
+    "delta": -0.023,
+    "delta_pct": -2.706,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Increasing depth from 4 to 6 with focal loss (building on the 85% E5 baseline) regressed to 82.7%, a -2.3pp drop from rolling best. The deeper model appears to overfit or converge to a worse minimum with the current hyperparameters \u2014 the optimal depth appears to be 4. The extra two GDN blocks add more parameters than the 128-token sequence can effectively use, particularly with the current 3e-4 learning rate and 600 epochs.",
+  "id": "exp_019"
+}

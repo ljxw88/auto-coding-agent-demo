@@ -1,0 +1,17 @@
+---
+
+## Session Summary — exp_040: I3 Smaller Patch Size
+
+**Experiment:** I3 — Smaller Patch Size (patch_size=32, stride=16)
+
+**Result: REJECTED (too_slow)**
+- Smoke test: **11.81s/epoch** — exceeds 10s threshold
+- 2× token count (~512 vs ~256) makes training too slow to run
+- Branch deleted, no full training run
+
+**Key finding:** `patch_size=64, stride=32` is the speed-optimal patch configuration. Halving the patch size doubles the sequence length and pushes over the speed limit.
+
+**Current state:**
+- Rolling best: **85.1%** (H2, unchanged)
+- 40/50 experiments, consecutive non-improvements: 3/5
+- 3 pending ideas: I2 (label_smoothing=0.1), I4 (expand_v=1.5), I5 (grad_norm=0.5)

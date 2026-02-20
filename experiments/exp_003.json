@@ -1,0 +1,37 @@
+{
+  "idea_id": "A2",
+  "idea_title": "Polar Form Feature Channels",
+  "git_branch": "experiment/A2-20260218_151158",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.66,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 66.56
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.829
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.829,
+    "delta": -0.011,
+    "delta_pct": -1.31,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.829,
+    "delta": -0.011,
+    "delta_pct": -1.31,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "The polar form feature channels hypothesis was not confirmed \u2014 accuracy dropped from 84% to 82.9% (-1.1pp). Explicitly appending amplitude, sin(phase), and cos(phase) channels did not provide additional discriminative information beyond what the GatedDeltaNet already extracts from raw I/Q. The 5-channel input may have made the patch embedding optimization harder, and the result falls within the known training instability range, showing no net benefit.",
+  "id": "exp_003"
+}

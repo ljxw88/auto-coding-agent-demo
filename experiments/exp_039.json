@@ -1,0 +1,36 @@
+{
+  "idea_id": "I1",
+  "idea_title": "Lower Learning Rate (lr=1e-4)",
+  "git_branch": "experiment/I1-20260219_172159",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.75,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.85
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.85,
+    "delta": 0.01,
+    "delta_pct": 1.19,
+    "improved": true
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.85,
+    "delta": -0.001,
+    "delta_pct": -0.118,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Lower lr=1e-4 achieves 85.0%, matching the focal loss E5 baseline but -0.1pp below the H2 rolling best (85.1%). The ReduceLROnPlateau scheduler already achieves effective LR reduction during training at 3e-4, so a lower starting lr provides no additional benefit. lr=3e-4 confirmed as the optimal starting learning rate.",
+  "id": "exp_039"
+}

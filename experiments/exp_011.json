@@ -1,0 +1,35 @@
+{
+  "idea_id": "B2",
+  "idea_title": "CLS Token Pooling",
+  "git_branch": "experiment/B2-20260218_193649",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 7.43,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.1
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.1,
+    "delta": -0.74,
+    "delta_pct": -88.1,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.1,
+    "delta": -0.74,
+    "delta_pct": -88.1,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "CLS token pooling collapsed to random-chance accuracy (10%). The fundamental incompatibility is that CLS is prepended at position 0, but the causal GDN processes left-to-right: the CLS token at position 0 only attends to itself and receives no information from subsequent IQ patch tokens. For CLS pooling to work with a causal model, the token would need to be appended at the end (position -1), but then it is equivalent to --pooling last. Early stopping fired very early due to stagnant validation loss.",
+  "id": "exp_011"
+}

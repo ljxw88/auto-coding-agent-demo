@@ -1,0 +1,19 @@
+{"level":"warn","message":"[BashTool] Pre-flight check is taking longer than expected. Run with ANTHROPIC_LOG=debug to check for failed or slow API requests."}
+**Session Summary:**
+
+---
+
+## Experiment exp_046: J3 — GDN mode=fused_recurrent
+
+**Result: 💥 FAILED** (smoke test failure)
+
+**What happened:**
+- Added `--gdn_mode {chunk,fused_recurrent}` CLI arg to `train_causal_iq_classifier.py` and passed it to `CausalIQGatedDeltaNetConfig`
+- Smoke test failed immediately with: `AssertionError: assert mode == 'chunk', "Only chunk mode is supported in training."`
+- The fla library's `GatedDeltaNet.forward()` (line 222 of `gated_deltanet.py`) hard-asserts `mode='chunk'` during the training path — `fused_recurrent` is only available for inference/autoregressive generation, not training
+
+**Conclusion:** J3 is **architecturally infeasible** without patching the fla library source. The `fused_recurrent` mode is an inference-only path in the current fla version.
+
+**Stop conditions:**
+- 5 consecutive non-improvements (exp_042 through exp_046) ≥ `max_consecutive_failures=5` → **STOP**
+- Remaining pending ideas: J4 (batch_size=64) and J5 (LR warmup) for the next session

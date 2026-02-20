@@ -1,0 +1,35 @@
+{
+  "idea_id": "F1",
+  "idea_title": "Circular Temporal Roll (Fixed C5)",
+  "git_branch": "experiment/F1-20260219_071733",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.47,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.775
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.775,
+    "delta": -0.065,
+    "delta_pct": -7.738,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.775,
+    "delta": -0.075,
+    "delta_pct": -8.824,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Circular temporal roll caused -7.5pp regression (85% to 77.5%). The GDN causal recurrent state encodes absolute burst position as a key feature -- randomizing burst start position via circular roll destroys the temporal fingerprint structure (startup transients appear at wrong positions). This extends the GDN pattern: modifications to temporal sequencing consistently hurt. The recurrent state is self-sufficient and relies on position-aware temporal structure for classification.",
+  "id": "exp_027"
+}

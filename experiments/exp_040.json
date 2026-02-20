@@ -1,0 +1,15 @@
+{
+  "idea_id": "I3",
+  "idea_title": "Smaller Patch Size (patch_size=32, stride=16)",
+  "git_branch": "experiment/I3-20260219_181646",
+  "outcome": "too_slow",
+  "smoke_test": {
+    "status": "too_slow",
+    "avg_seconds_per_epoch": 11.81,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "branch_kept": false,
+  "conclusion": "Rejected: patch_size=32 with stride=16 doubles the token count (~512 tokens vs ~256) causing 11.81s/epoch exceeding 10s threshold. Finer temporal resolution is computationally infeasible at current batch_size=128. patch_size=64 confirmed as speed-optimal patch configuration.",
+  "id": "exp_040"
+}

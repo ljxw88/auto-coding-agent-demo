@@ -1,0 +1,3 @@
+The background task result is already captured — we got the same output from the foreground evaluator call. The experiment is fully complete.
+
+Follow the workflow in CLAUDE.md exactly. Run ONE complete research experiment this session. Note that `max_consecutive_failures` has been exceeded, but `max_experiments` (50) has not been reached, so continue with the next experiment.

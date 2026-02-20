@@ -87,16 +87,22 @@ def generate_ideas(count: int = 5) -> list[dict]:
             arxiv_context = "## Relevant recent papers:\n" + "\n".join(paper_lines)
 
     prompt_template = (PROMPTS_DIR / "idea_generation.md").read_text()
-    user_prompt = prompt_template.format(
-        research_goal=config.get("research_goal", "improve model performance"),
-        research_domain=config.get("research_domain", "deep learning"),
-        primary_metric=config.get("primary_metric", "accuracy"),
-        codebase_summary=codebase_summary,
-        experiment_history=history_text,
-        already_tried="\n".join(f"- {t}" for t in already_tried) or "None yet",
-        arxiv_context=arxiv_context,
-        count=count,
-    )
+    # Use manual replacement to avoid KeyError when substituted values contain '{' or '}'
+    replacements = {
+        "{research_goal}": config.get("research_goal", "improve model performance"),
+        "{research_domain}": config.get("research_domain", "deep learning"),
+        "{primary_metric}": config.get("primary_metric", "accuracy"),
+        "{codebase_summary}": codebase_summary,
+        "{experiment_history}": history_text,
+        "{already_tried}": "\n".join(f"- {t}" for t in already_tried) or "None yet",
+        "{arxiv_context}": arxiv_context,
+        "{count}": str(count),
+    }
+    user_prompt = prompt_template
+    for key, value in replacements.items():
+        user_prompt = user_prompt.replace(key, value)
+    # Restore literal braces (escaped as {{ }}) back to single braces for LLM JSON example
+    user_prompt = user_prompt.replace("{{", "{").replace("}}", "}")
 
     system_prompt = (
         "You are an expert ML researcher. Generate creative, specific, and actionable "

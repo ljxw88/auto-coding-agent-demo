@@ -1,0 +1,17 @@
+---
+
+## Session Summary
+
+**Experiment: H3 — Wider Short Convolution in GDN (conv_size=8)**
+
+**Outcome: REJECTED (too_slow)**
+
+- Selected idea H3 (highest `expected_impact: medium` among pending ideas)
+- Created branch `experiment/H3-20260219_151414` with E5 focal loss cherry-picked
+- Added `--conv_size` CLI arg to `train_causal_iq_classifier.py` and wired it to `CausalIQGatedDeltaNetConfig`
+- Smoke test result: **10.60s/epoch** (threshold: 10s) — just over the speed limit
+- Logged as `exp_036`, deleted branch, returned to main
+
+**Stop condition triggered:** `max_consecutive_failures=5` exceeded (now 18 consecutive non-improvements from exp_019 to exp_036). The smoke test rejection counts as the completed session experiment.
+
+**Remaining pending ideas:** H2 (Larger Head Dimension, config-only), H5 (MLP Hidden Ratio Tuning, config-only). Both require human continuation or `ANTHROPIC_API_KEY` for `idea_generator.py` to generate fresh ideas.

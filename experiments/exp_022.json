@@ -1,0 +1,15 @@
+{
+  "idea_id": "D4",
+  "idea_title": "Finer Patch Stride (stride=16)",
+  "git_branch": "experiment/D4-20260219_044556",
+  "outcome": "too_slow",
+  "smoke_test": {
+    "status": "too_slow",
+    "avg_seconds_per_epoch": 14.83,
+    "threshold": 10,
+    "message": "Per-epoch time 14.83s exceeds threshold 10s \u2014 rejecting idea"
+  },
+  "branch_kept": false,
+  "conclusion": "stride=16 with patch_size=64 produces 512 tokens vs 257 with stride=32, nearly doubling sequence length and causing 14.83s/epoch (threshold 10s). The increased sequence length overhead is too expensive for this setup. Future attempts would need to reduce dim or depth to compensate for the longer sequence.",
+  "id": "exp_022"
+}

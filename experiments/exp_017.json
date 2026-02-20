@@ -1,0 +1,35 @@
+{
+  "idea_id": "B3",
+  "idea_title": "Stochastic Depth (Drop Path)",
+  "git_branch": "experiment/B3-20260219_001713",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.5,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.832
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.832,
+    "delta": -0.008,
+    "delta_pct": -0.952,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.832,
+    "delta": -0.008,
+    "delta_pct": -0.952,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Stochastic depth with drop_path_rate=0.1 (linearly spaced 0.0 to 0.1 across 4 blocks) achieved 83.2%, a -0.8pp regression from the 84% baseline. However, this is the second-best result in the entire experiment history (behind A4 dual-branch at 83.5%), suggesting mild stochastic regularization helps but is insufficient alone. The result is closest to baseline of any single-architecture experiment tried \u2014 stochastic depth may be a useful building block to combine with other improvements.",
+  "id": "exp_017"
+}

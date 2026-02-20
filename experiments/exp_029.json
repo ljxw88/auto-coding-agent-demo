@@ -1,0 +1,35 @@
+{
+  "idea_id": "G1",
+  "idea_title": "Auxiliary Intermediate Classification Head",
+  "git_branch": "experiment/G1-20260219_091418",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.89,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.829
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.829,
+    "delta": -0.011,
+    "delta_pct": -1.31,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.829,
+    "delta": -0.021,
+    "delta_pct": -2.471,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Auxiliary intermediate classification head caused -2.1pp regression (85.0% to 82.9%). Forcing a classification head at depth//2 (block 2 of 4) creates conflicting gradient signals: the early head demands rich discriminative features before the GDN recurrent state has integrated the full sequence, degrading the quality of the final representation. The GDN builds its fingerprint incrementally across all 4 blocks; splitting supervision at the midpoint penalizes this hierarchical accumulation. Auxiliary heads require deeper models to be effective.",
+  "id": "exp_029"
+}

@@ -1,0 +1,37 @@
+{
+  "idea_id": "H4",
+  "idea_title": "Test-Time Augmentation (TTA)",
+  "git_branch": "experiment/H4-20260219_131412",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.43,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 64.26
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.845
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.845,
+    "delta": 0.005,
+    "delta_pct": 0.595,
+    "improved": true
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.845,
+    "delta": -0.005,
+    "delta_pct": -0.588,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "TTA with CFO rotation (\u00b1200Hz) and AWGN (25dB) degraded accuracy by -0.5pp vs rolling best (84.5% vs 85.0%). The hypothesis was flawed: LocD test data has consistent clean capture conditions (minimal CFO, high SNR), so adding artificial CFO/AWGN jitter at test time corrupts otherwise clean signals rather than reducing prediction variance. This is consistent with the established project pattern that hardware-variation augmentations hurt on LocD. TTA could theoretically help with label-preserving augmentations only.",
+  "id": "exp_034"
+}

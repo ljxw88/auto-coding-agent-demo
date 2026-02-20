@@ -1,0 +1,33 @@
+{
+  "idea_id": "J4",
+  "idea_title": "Batch Size 64 (Smaller Batch Noisier Gradients)",
+  "git_branch": "experiment/J4-20260219_225626",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 5.5,
+    "epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.82
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.82,
+    "delta": -0.02,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.82,
+    "delta": -0.031,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Smaller batch_size=64 caused a -3.1pp regression from 85.1% to 82.0% on the LocD test set. The hypothesis that noisier gradients would help escape sharp minima was not confirmed; instead, the increased gradient variance from fewer samples per batch destabilized focal loss training, which requires stable gradient estimates to effectively downweight easy examples. Batch size 128 confirmed optimal for this focal loss + GDN configuration.",
+  "id": "exp_048"
+}

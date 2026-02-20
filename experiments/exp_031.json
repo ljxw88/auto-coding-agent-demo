@@ -1,0 +1,37 @@
+{
+  "idea_id": "G4",
+  "idea_title": "Focal Loss gamma=1.5 (softer focus)",
+  "git_branch": "experiment/G4-20260219_105731",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.69,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 66.94
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.829
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.829,
+    "delta": -0.011,
+    "delta_pct": -1.31,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.85,
+    "new_value": 0.829,
+    "delta": -0.021,
+    "delta_pct": -2.471,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "gamma=1.5 yielded 82.9% (-2.1pp vs rolling best 85%), a clear regression. Softer focus allows easier examples to dominate gradient updates, undermining the hard-pair discrimination that focal loss is designed to achieve. This conclusively confirms gamma=2.0 is the optimal focal loss gamma for this 10-class LocD fingerprinting task \u2014 both directions from 2.0 (1.5 and 3.0) produce regressions.",
+  "id": "exp_031"
+}

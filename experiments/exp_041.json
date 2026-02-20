@@ -1,0 +1,33 @@
+{
+  "idea_id": "I2",
+  "idea_title": "Label Smoothing Increase (label_smoothing=0.1)",
+  "git_branch": "experiment/I2-20260219_182115",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.77,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.833
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.833,
+    "delta": -0.007,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.833,
+    "delta": -0.018,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Doubling label smoothing from 0.05 to 0.1 caused a -1.8pp regression to 83.3%. The combination of focal loss + stronger label smoothing over-regularizes the output distribution: focal loss already provides sample-weighting for hard cases, while 0.1 label smoothing weakens discriminative supervision too much. Optimal label smoothing confirmed at 0.05.",
+  "id": "exp_041"
+}

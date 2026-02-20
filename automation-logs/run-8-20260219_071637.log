@@ -1,0 +1,27 @@
+The background task notification is just the duplicate output from the full training command that already completed synchronously. The results have already been captured.
+
+---
+
+## Session Complete — exp_027: F1 Circular Temporal Roll
+
+**Result: REGRESSION — 77.5% (-7.5pp vs rolling best of 85%)**
+
+### What happened:
+1. Selected idea **F1 (Circular Temporal Roll)** — the last viable pending idea from the backlog
+2. Cherry-picked E5 focal loss commit (`a5c9909`) onto the experiment branch
+3. Implemented vectorized circular roll augmentation in `gpu_aug_iq.py` + `--temporal_roll` CLI flag
+4. Smoke test: **PASS** (6.47s/epoch, well under 10s threshold)
+5. Full training (600 epochs): completed in ~3000s
+6. Evaluation: **77.5%** — significant regression
+7. Logged as exp_027, deleted branch, returned to main
+
+### Key learning:
+The GDN recurrent causal state encodes **absolute temporal position** as a key discriminant. Burst startup transients are position-specific device fingerprints. Circular roll randomizes their position → -7.5pp. This extends the established GDN pattern: any modification to temporal sequencing or position encoding hurts.
+
+### Stop condition triggered:
+**9 consecutive failures** (exp_019–exp_027) exceeds `max_consecutive_failures=5`
+
+### Next session must:
+1. Fix `idea_generator.py` (KeyError in prompt template) and generate fresh ideas
+2. Only B6 (Mamba-2 backbone) remains in the backlog — new ideas needed
+3. Focus new ideas on: loss function improvements, ensemble strategies, or hyperparameter tuning — **NOT** any temporal/positional modifications

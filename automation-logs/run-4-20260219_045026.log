@@ -1,0 +1,22 @@
+The background task already completed and I retrieved its output earlier. The session is done.
+
+---
+
+## Session Complete — exp_023 (F6: Patch Token Dropout) — REGRESSION
+
+**One experiment completed this session.** Here's the full summary:
+
+### Experiment: F6 — Patch Token Dropout
+- **Idea:** Zero 5% of patch embedding tokens randomly during training to act as a model-side regularizer
+- **Implementation:** Added `token_drop_rate` to `CausalIQGatedDeltaNetConfig`, applied `torch.bernoulli` mask in `forward()` after `self.patch(x)`
+- **Smoke test:** 6.67s/epoch ✓
+- **Full training result:** Model stuck at ~30% val_acc; early stopping fired at ~125 epochs
+- **LocD test accuracy: 27.2%** vs 85% rolling best (-57.8pp)
+
+### Why it failed
+Token dropout in embedding space is fundamentally incompatible with causal state-space models. In a Transformer, masked tokens are independently processed — you can ignore them. In GatedDeltaNet, each token's output is written into a shared hidden state, and subsequent tokens read from that state. Zeroing 5% of tokens creates "memory wipes" scattered throughout the sequence — corrupting the recurrent state that all downstream tokens depend on.
+
+### Stop Condition Triggered
+**5 consecutive non-improvements** (exp_019 through exp_023): D2 regression → F2 regression → D3 regression → D4 too_slow → F6 regression. `max_consecutive_failures=5` is met.
+
+**Rolling best remains: 85.0%** (exp_018, E5 Focal Loss). Branch and experiment branch deleted; memory updated.

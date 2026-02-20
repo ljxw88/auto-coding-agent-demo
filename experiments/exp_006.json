@@ -1,0 +1,37 @@
+{
+  "idea_id": "C3",
+  "idea_title": "Mixup on IQ Signals",
+  "git_branch": "experiment/C3-20260218_165901",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.63,
+    "threshold": 10,
+    "smoke_test_epochs": 10,
+    "total_elapsed": 66.26
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.804
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.804,
+    "delta": -0.036,
+    "delta_pct": -4.286,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.804,
+    "delta": -0.036,
+    "delta_pct": -4.286,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Mixup (alpha=0.4) caused a -3.6pp regression (80.4%). Interpolating IQ signals from different transmitters produces physically unrealistic mixed signals: device fingerprints do not linearly superpose. The model learns to classify these synthetic mixtures at test time, but test evaluation uses clean unmixed signals, so the model is penalized for adapting to artificial mixing. Mixup appears unsuitable for RFFI where signal identities are non-linearly encoded.",
+  "id": "exp_006"
+}

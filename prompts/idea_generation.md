@@ -85,14 +85,14 @@ Return ONLY a JSON array (no markdown, no extra text):
 
 ```json
 [
-  {
+  {{
     "title": "Short descriptive title",
     "hypothesis": "Why this should improve fingerprinting accuracy on IQ signals",
     "implementation_notes": "Exactly what to change, in which file, and how. Be specific about function names and parameter values.",
     "files_to_modify": ["experiment_project/path/to/file.py"],
     "expected_impact": "medium",
     "source": "arxiv:XXXX.XXXXX or LLM"
-  }
+  }}
 ]
 ```
 

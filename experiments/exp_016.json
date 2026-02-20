@@ -1,0 +1,35 @@
+{
+  "idea_id": "B1",
+  "idea_title": "Hybrid GatedDeltaNet + Softmax Attention",
+  "git_branch": "experiment/B1-20260218_233319",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 6.31,
+    "threshold": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.826
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.826,
+    "delta": -0.014,
+    "delta_pct": -1.667,
+    "improved": false
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.84,
+    "new_value": 0.826,
+    "delta": -0.014,
+    "delta_pct": -1.667,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "Replacing every other GDN block (interval=2) with full softmax attention (SDPABlock) regressed accuracy by -1.4pp to 82.6%. The hybrid architecture did not improve LocD generalization despite adding O(L^2) full attention layers. The GDN linear attention mechanism appears sufficient for the sequence lengths used (128 tokens), and adding quadratic attention may introduce optimization difficulties or overfit to val distribution while degrading LocD test accuracy.",
+  "id": "exp_016"
+}

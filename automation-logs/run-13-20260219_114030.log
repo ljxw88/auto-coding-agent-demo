@@ -1,0 +1,10 @@
+The background task has already completed and I've processed its result. The session is done.
+
+To summarize exp_032 (G5 — Larger Model dim=768):
+
+- **Result: 81.8%** — regression of **-3.2pp** vs rolling best (85.0%)
+- Smoke test: 9.15s/epoch (just under the 10s threshold)
+- Full training: 600 epochs at 6.9s/epoch
+- **Hypothesis rejected**: Wider model (dim=512→768) hurt accuracy. The 10-class fingerprinting task is well-served by dim=512; extra capacity did not help and likely overfit.
+
+**Stop condition reached**: 14 consecutive failures (exp_019–exp_032) exceeds `max_consecutive_failures=5`. Only B6 (Mamba-2 Backbone) remains as a pending idea — new idea generation (requires `ANTHROPIC_API_KEY`) will be needed before the next productive session can run.

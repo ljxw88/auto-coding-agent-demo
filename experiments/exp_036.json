@@ -1,0 +1,15 @@
+{
+  "idea_id": "H3",
+  "idea_title": "Wider Short Convolution in GDN (conv_size=8)",
+  "git_branch": "experiment/H3-20260219_151414",
+  "outcome": "too_slow",
+  "smoke_test": {
+    "status": "too_slow",
+    "avg_seconds_per_epoch": 10.6,
+    "threshold": 10,
+    "message": "Per-epoch time 10.60s exceeds threshold 10s \u2014 rejecting idea"
+  },
+  "branch_kept": false,
+  "conclusion": "Rejected: per-epoch time 10.60s exceeded 10s threshold. Doubling the GDN short causal conv kernel from conv_size=4 to conv_size=8 adds ~6% compute overhead that pushed execution just over the speed limit. The conv_size=4 baseline is already near-optimal for this architecture.",
+  "id": "exp_036"
+}

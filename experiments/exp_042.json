@@ -1,0 +1,36 @@
+{
+  "idea_id": "I4",
+  "idea_title": "expand_v=1.5 (Smaller Value Projection)",
+  "git_branch": "experiment/I4-20260219_191326",
+  "outcome": "regression",
+  "smoke_test": {
+    "status": "ok",
+    "avg_seconds_per_epoch": 5.37,
+    "threshold": 10,
+    "smoke_test_epochs": 10
+  },
+  "metrics": {
+    "primary": {
+      "name": "accuracy",
+      "value": 0.845
+    },
+    "supporting": {}
+  },
+  "vs_original_baseline": {
+    "baseline_value": 0.84,
+    "new_value": 0.845,
+    "delta": 0.005,
+    "delta_pct": 0.595,
+    "improved": true
+  },
+  "vs_rolling_best": {
+    "baseline_value": 0.851,
+    "new_value": 0.845,
+    "delta": -0.006,
+    "delta_pct": -0.705,
+    "improved": false
+  },
+  "branch_kept": false,
+  "conclusion": "expand_v=1.5 yields 84.5%, a -0.6pp regression vs rolling best 85.1%. Reducing the GDN value matrix by 25% (expand_v 2.0\u21921.5) decreases the recurrent state expressiveness below the threshold needed for the 10-class LocD task. The default expand_v=2.0 is confirmed optimal; reducing it reduces capacity to distinguish hard device pairs. Training was faster (4.35s/epoch vs ~5.4s/epoch) confirming smaller state, but accuracy cost is not worth the speed gain.",
+  "id": "exp_042"
+}
